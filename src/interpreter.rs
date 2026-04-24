@@ -2,7 +2,7 @@ use std::io;
 
 use crate::parser::Instruction;
 
-pub fn interpreter(instructions: Vec<Instruction>) {
+pub fn interpreter(instructions: Vec<Instruction>) -> Vec<u8> {
     let mut array: Vec<u8> = vec![0];
     let mut array_pointer = 0;
     let mut instruction_pointer = 0;
@@ -31,4 +31,6 @@ pub fn interpreter(instructions: Vec<Instruction>) {
 
         instruction_pointer += 1;
     }
+
+    array
 }
