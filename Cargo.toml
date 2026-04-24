@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2024"
 description = "brainpurr interpreter"
 repository = "https://github.com/pommeJedusor/brainpurr"
-license-file = "LICENSE"
 license = "MIT"
 keywords = ["cli", "brainpurr", "brainfuck"]
 categories = ["command-line-utilities"]
