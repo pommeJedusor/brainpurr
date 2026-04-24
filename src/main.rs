@@ -1,24 +1,8 @@
 mod interpreter;
-use crate::interpreter::*;
+mod parser;
+use crate::{interpreter::*, parser::parse_file};
 
 fn main() {
-    let instructions = vec![
-        Instruction::ByteInput,
-        Instruction::PointerIncrement,
-        Instruction::ByteInput,
-        Instruction::PointerDecrement,
-
-        // [->+<]
-        Instruction::OpenLoop(8),
-        Instruction::ByteDecrement,
-        Instruction::PointerIncrement,
-        Instruction::ByteIncrement,
-        Instruction::PointerDecrement,
-        Instruction::CloseLoop(3),
-
-        Instruction::ByteOutput,
-        Instruction::PointerIncrement,
-        Instruction::ByteOutput,
-    ];
+    let instructions = parse_file("test.bf");
     interpreter(instructions);
 }

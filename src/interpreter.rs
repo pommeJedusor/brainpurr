@@ -1,16 +1,6 @@
 use std::io;
 
-#[derive(Debug)]
-pub enum Instruction {
-    PointerIncrement,
-    PointerDecrement,
-    ByteIncrement,
-    ByteDecrement,
-    ByteOutput,
-    ByteInput,
-    OpenLoop(usize),
-    CloseLoop(usize),
-}
+use crate::parser::Instruction;
 
 pub fn interpreter(instructions: Vec<Instruction>) {
     let mut array = [0u8; 67_000];
@@ -29,7 +19,7 @@ pub fn interpreter(instructions: Vec<Instruction>) {
               let input = input.chars().next().unwrap() as u8;
               array[array_pointer] = input;
             },
-            Instruction::ByteOutput => println!("{}", array[array_pointer] as char),
+            Instruction::ByteOutput => print!("{}", array[array_pointer] as char),
             Instruction::OpenLoop(close_loop_index) => if array[array_pointer] == 0{instruction_pointer = close_loop_index},
             Instruction::CloseLoop(open_loop_index) => if array[array_pointer] != 0{instruction_pointer = open_loop_index},
         }
