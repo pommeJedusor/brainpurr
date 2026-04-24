@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, path::PathBuf};
 
 const INSTRUCTIONS: [&str; 8] = ["meow", "mrow", "mrp", "purr", ":3c", ">:3", "nya", ":3"];
 
@@ -15,7 +15,7 @@ pub enum Instruction {
 }
 
 
-pub fn parse_file(file_path: &str) -> Vec<Instruction> {
+pub fn parse_file(file_path: &PathBuf) -> Vec<Instruction> {
     let content = fs::read_to_string(file_path)
         .expect("failed to read file");
 
