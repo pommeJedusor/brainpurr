@@ -3,13 +3,18 @@ use std::io;
 use crate::parser::Instruction;
 
 pub fn interpreter(instructions: Vec<Instruction>) {
-    let mut array = [0u8; 67_000];
+    let mut array: Vec<u8> = vec![0];
     let mut array_pointer = 0;
     let mut instruction_pointer = 0;
 
     while instruction_pointer < instructions.len(){
         match instructions[instruction_pointer] {
-            Instruction::PointerIncrement => array_pointer += 1,
+            Instruction::PointerIncrement => {
+                if array.len() == array_pointer + 1 {
+                    array.push(0);
+                }
+                array_pointer += 1
+            },
             Instruction::PointerDecrement => array_pointer -= 1,
             Instruction::ByteIncrement => array[array_pointer] = array[array_pointer].wrapping_add(1),
             Instruction::ByteDecrement => array[array_pointer] = array[array_pointer].wrapping_sub(1),
