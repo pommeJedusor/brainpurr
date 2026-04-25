@@ -34,3 +34,44 @@ pub fn interpreter(instructions: Vec<Instruction>) -> Vec<u8> {
 
     array
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn increment(){
+        assert_eq!(interpreter(vec![Instruction::ByteIncrement]), vec![1]);
+    }
+
+    #[test]
+    fn increment_overflow(){
+        assert_eq!(interpreter(vec![Instruction::ByteIncrement; 256]), vec![0]);
+    }
+
+    #[test]
+    fn decrement(){
+        assert_eq!(interpreter(vec![Instruction::ByteIncrement, Instruction::ByteDecrement]), vec![0]);
+    }
+
+    #[test]
+    fn decrement_overflow(){
+        assert_eq!(interpreter(vec![Instruction::ByteDecrement; 256]), vec![0]);
+    }
+
+    #[test]
+    fn pointer_increment(){
+        assert_eq!(interpreter(vec![Instruction::PointerIncrement, Instruction::ByteIncrement]), vec![0, 1]);
+    }
+
+    #[test]
+    fn pointer_decrement(){
+        assert_eq!(interpreter(vec![Instruction::PointerIncrement, Instruction::PointerDecrement, Instruction::ByteIncrement]), vec![1, 0]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn pointer_decrement_overflow(){
+        interpreter(vec![Instruction::PointerDecrement]);
+    }
+}

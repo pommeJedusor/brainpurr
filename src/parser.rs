@@ -2,7 +2,7 @@ use std::{fs, path::PathBuf};
 
 const INSTRUCTIONS: [&str; 8] = ["meow", "mrow", "mrp", "purr", ":3c", ">:3", "nya", ":3"];
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Instruction {
     PointerIncrement,
     PointerDecrement,
