@@ -50,3 +50,16 @@ pub fn parse_file(file_path: &PathBuf) -> Vec<Instruction> {
 
     instructions
 }
+
+pub fn unparse(instructions: Vec<Instruction>) -> String{
+    instructions.iter().map(|instruction| match instruction{
+        Instruction::PointerIncrement => "meow",
+        Instruction::PointerDecrement => "mrow",
+        Instruction::ByteIncrement => "mrp",
+        Instruction::ByteDecrement => "purr",
+        Instruction::ByteOutput => ":3c",
+        Instruction::ByteInput => ">:3",
+        Instruction::OpenLoop(_) => "nya",
+        Instruction::CloseLoop(_) => ":3",
+    }).collect::<Vec<&str>>().join(" ")
+}
