@@ -1,0 +1,21 @@
+# brainpurr code that prints meow in the terminal
+
+# sets the first cell value as 22 for the nya :3 loop to operate 22 times
+mrp mrp mrp mrp mrp mrp mrp mrp mrp mrp mrp mrp mrp mrp mrp mrp mrp mrp mrp mrp mrp mrp 
+
+# sets the 2nd -> 5th cell values as 110 (5 * 22)
+nya
+  purr
+  meow mrp mrp mrp mrp mrp
+  meow mrp mrp mrp mrp mrp
+  meow mrp mrp mrp mrp mrp
+  meow mrp mrp mrp mrp mrp
+  mrow mrow mrow mrow
+:3
+
+# modifies the 2nd -> 6th values to match ['m', 'e', 'o', 'w', '\n'] or [109, 101, 111, 119, 10] and print it
+meow purr :3c
+meow purr purr purr purr purr purr purr purr purr :3c
+meow mrp :3c
+meow mrp mrp mrp mrp mrp mrp mrp mrp mrp :3c
+meow mrp mrp mrp mrp mrp mrp mrp mrp mrp mrp :3c
