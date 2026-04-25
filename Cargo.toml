@@ -8,6 +8,7 @@ license = "MIT"
 keywords = ["cli", "brainpurr", "brainfuck"]
 categories = ["command-line-utilities"]
 readme = "README.md"
+exclude = ["examples"]
 
 [dependencies]
 clap = { version = "4.6.1", features = ["derive"] }
