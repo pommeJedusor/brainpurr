@@ -12,6 +12,10 @@ struct Args {
     /// the path to the brainpurr file
     path: PathBuf,
 
+    /// shows the array at the end of the program
+    #[arg(long)]
+    show_final_array: bool,
+
     /// to interpret the file as brainfuck instead of brainpurr
     #[arg(long)]
     from_brainfuck: bool,
@@ -42,5 +46,7 @@ fn main() {
     }
 
     let array = interpreter(instructions);
-    println!("\nprogram ended\narray: {:?}", array);
+    if args.show_final_array {
+        println!("\nfinal array: {:?}", array);
+    }
 }
