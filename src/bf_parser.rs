@@ -8,8 +8,11 @@ const INSTRUCTIONS: [char; 8] = ['>', '<', '+', '-', '.', ',', '[', ']'];
 pub fn parse_file(file_path: &PathBuf) -> Vec<Instruction> {
     let content = fs::read_to_string(file_path)
         .expect("failed to read file");
+    parse(&content)
+}
 
-    let instructions_words = content.chars().filter(|x| INSTRUCTIONS.contains(x));
+pub fn parse(program: &str) -> Vec<Instruction> {
+    let instructions_words = program.chars().filter(|x| INSTRUCTIONS.contains(x));
 
     let mut open_brackets = vec![];
     let mut close_brackets = vec![];
@@ -52,4 +55,19 @@ pub fn unparse(instructions: Vec<Instruction>) -> String{
         Instruction::OpenLoop(_) => '[',
         Instruction::CloseLoop(_) => ']',
     }).collect::<String>()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parsing(){
+        assert_eq!(parse("><+-.,[]"), vec![Instruction::PointerIncrement, Instruction::PointerDecrement, Instruction::ByteIncrement, Instruction::ByteDecrement, Instruction::ByteOutput, Instruction::ByteInput, Instruction::OpenLoop(7), Instruction::CloseLoop(6)]);
+    }
+
+    #[test]
+    fn unparsing(){
+        assert_eq!(unparse(vec![Instruction::PointerIncrement, Instruction::PointerDecrement, Instruction::ByteIncrement, Instruction::ByteDecrement, Instruction::ByteOutput, Instruction::ByteInput, Instruction::OpenLoop(7), Instruction::CloseLoop(6)]), "><+-.,[]");
+    }
 }

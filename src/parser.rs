@@ -2,7 +2,7 @@ use std::{fs, path::PathBuf};
 
 const INSTRUCTIONS: [&str; 8] = ["meow", "mrow", "mrp", "purr", ":3c", ">:3", "nya", ":3"];
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Instruction {
     PointerIncrement,
     PointerDecrement,
@@ -18,8 +18,11 @@ pub enum Instruction {
 pub fn parse_file(file_path: &PathBuf) -> Vec<Instruction> {
     let content = fs::read_to_string(file_path)
         .expect("failed to read file");
+    parse(&content)
+}
 
-    let instructions_words = content.split_whitespace().filter(|x| INSTRUCTIONS.contains(x));
+pub fn parse(program: &str) -> Vec<Instruction> {
+    let instructions_words = program.split_whitespace().filter(|x| INSTRUCTIONS.contains(x));
 
     let mut open_brackets = vec![];
     let mut close_brackets = vec![];
@@ -62,4 +65,19 @@ pub fn unparse(instructions: Vec<Instruction>) -> String{
         Instruction::OpenLoop(_) => "nya",
         Instruction::CloseLoop(_) => ":3",
     }).collect::<Vec<&str>>().join(" ")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parsing(){
+        assert_eq!(parse("meow mrow mrp purr :3c >:3 nya :3"), vec![Instruction::PointerIncrement, Instruction::PointerDecrement, Instruction::ByteIncrement, Instruction::ByteDecrement, Instruction::ByteOutput, Instruction::ByteInput, Instruction::OpenLoop(7), Instruction::CloseLoop(6)]);
+    }
+
+    #[test]
+    fn unparsing(){
+        assert_eq!(unparse(vec![Instruction::PointerIncrement, Instruction::PointerDecrement, Instruction::ByteIncrement, Instruction::ByteDecrement, Instruction::ByteOutput, Instruction::ByteInput, Instruction::OpenLoop(7), Instruction::CloseLoop(6)]), "meow mrow mrp purr :3c >:3 nya :3");
+    }
 }
