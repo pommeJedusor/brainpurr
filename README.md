@@ -3,6 +3,7 @@
 ## description
 brainpurr is a Turing complete programming language made entirely of cat noises: meow, mrow, mrp, purr, :3c, >:3, nya and :3.
 it is strongly inspired by [brainfuck](https://en.wikipedia.org/wiki/Brainfuck) (to not say a total copy)
+[\[crate\]](https://crates.io/crates/brainpurr)
 
 ## how it works
 
