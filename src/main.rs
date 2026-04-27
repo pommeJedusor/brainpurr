@@ -33,7 +33,7 @@ struct Args {
     #[arg(long)]
     to_c: bool,
 
-    /// compile the code (requires gcc)
+    /// compiles the code (requires gcc)
     #[arg(long)]
     compile: bool,
 }

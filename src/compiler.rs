@@ -28,12 +28,12 @@ pub fn compile_to_c(instructions: &Vec<Instruction>, max_array_size: Option<u32>
 pub fn compile_to_file(instructions: &Vec<Instruction>, max_array_size: Option<u32>){
     let c_code = compile_to_c(instructions, max_array_size);
     let c_file_name = "temp-jq7uvwn9up6u1wqpg756wh3flkyrmb9qwogro9j9.c";
-    let mut file = File::create(c_file_name).unwrap();
+    let mut file = File::create(c_file_name).expect("failed to create temporary file for compiling");
     let _ = write!(file, "{}", c_code);
     let _ = Command::new("gcc")
         .args([c_file_name])
         .output()
-        .expect("failed to execute process (requires gcc)");
-    fs::remove_file(c_file_name).unwrap();
+        .expect("failed to compile the code using gcc (gcc is required to run this command)");
+    fs::remove_file(c_file_name).expect("failed to delete temporary file for compiling");
     return;
 }
