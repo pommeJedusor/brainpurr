@@ -2,11 +2,10 @@ mod compiler;
 mod interpreter;
 mod parser;
 mod bf_parser;
-use std::{fs::{self, File}, io::Write, path::PathBuf};
+use std::path::PathBuf;
 
 use crate::{interpreter::*};
 use clap::{Parser};
-use std::process::Command;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -55,19 +54,10 @@ fn main() {
         return println!("{}", bf_parser::unparse(instructions));
     }
     if args.to_c {
-        return println!("{}", compiler::compiler(instructions, None));
+        return println!("{}", compiler::compile_to_c(&instructions, None));
     }
     if args.compile {
-        let c_code = compiler::compiler(instructions, None);
-        let c_file_name = "temp-jq7uvwn9up6u1wqpg756wh3flkyrmb9qwogro9j9.c";
-        let mut file = File::create(c_file_name).unwrap();
-        let _ = write!(file, "{}", c_code);
-        let _ = Command::new("gcc")
-            .args([c_file_name])
-            .output()
-            .expect("failed to execute process (requires gcc)");
-        fs::remove_file(c_file_name).unwrap();
-        return;
+        return compiler::compile_to_file(&instructions, None);
     }
 
     let array = interpreter(instructions);

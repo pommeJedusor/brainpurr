@@ -1,8 +1,8 @@
-use std::{ops::Add};
+use std::{fs::{self, File}, ops::Add, io::Write, process::Command};
 
 use crate::parser::Instruction;
 
-pub fn compiler(instructions: Vec<Instruction>, max_array_size: Option<u32>) -> String {
+pub fn compile_to_c(instructions: &Vec<Instruction>, max_array_size: Option<u32>) -> String {
     let max_array_size = max_array_size.unwrap_or(67000);
 
     let c_file = "#include <stdio.h>\n".to_string();
@@ -23,4 +23,17 @@ pub fn compiler(instructions: Vec<Instruction>, max_array_size: Option<u32>) -> 
     let c_file = c_file.add("}");
 
     c_file
+}
+
+pub fn compile_to_file(instructions: &Vec<Instruction>, max_array_size: Option<u32>){
+    let c_code = compile_to_c(instructions, max_array_size);
+    let c_file_name = "temp-jq7uvwn9up6u1wqpg756wh3flkyrmb9qwogro9j9.c";
+    let mut file = File::create(c_file_name).unwrap();
+    let _ = write!(file, "{}", c_code);
+    let _ = Command::new("gcc")
+        .args([c_file_name])
+        .output()
+        .expect("failed to execute process (requires gcc)");
+    fs::remove_file(c_file_name).unwrap();
+    return;
 }
