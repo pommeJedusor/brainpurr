@@ -5,6 +5,8 @@ brainpurr is a Turing complete programming language made entirely of cat noises:
 it is strongly inspired by [brainfuck](https://en.wikipedia.org/wiki/Brainfuck) (to not say a total copy)
 [\[crate\]](https://crates.io/crates/brainpurr)
 
+you can find some examples of brainpurr code in the [examples directory](https://github.com/pommeJedusor/brainpurr/tree/main/examples)
+
 ## how it works
 
 the way brainpurr works is that it stores in memory 4 different things:
