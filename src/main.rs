@@ -17,7 +17,7 @@ struct Args {
     #[arg(long)]
     show_final_array: bool,
 
-    /// to interpret the file as brainfuck instead of brainpurr
+    /// interprets the file as brainfuck instead of brainpurr
     #[arg(long)]
     from_brainfuck: bool,
 
