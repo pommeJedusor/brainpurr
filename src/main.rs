@@ -1,10 +1,12 @@
+mod compiler;
 mod interpreter;
 mod parser;
 mod bf_parser;
-use std::{path::PathBuf};
+use std::{fs::{self, File}, io::Write, path::PathBuf};
 
 use crate::{interpreter::*};
 use clap::{Parser};
+use std::process::Command;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -27,6 +29,14 @@ struct Args {
     /// outputs the code as brainfuck instead of running it (useful to translate brainpurr into brainfuck)
     #[arg(long)]
     to_brainfuck: bool,
+
+    /// outputs the code as c instead of running it (useful to translate brainpurr into c)
+    #[arg(long)]
+    to_c: bool,
+
+    /// compile the code (requires gcc)
+    #[arg(long)]
+    compile: bool,
 }
 
 fn main() {
@@ -43,6 +53,21 @@ fn main() {
     }
     if args.to_brainfuck {
         return println!("{}", bf_parser::unparse(instructions));
+    }
+    if args.to_c {
+        return println!("{}", compiler::compiler(instructions, None));
+    }
+    if args.compile {
+        let c_code = compiler::compiler(instructions, None);
+        let c_file_name = "temp-jq7uvwn9up6u1wqpg756wh3flkyrmb9qwogro9j9.c";
+        let mut file = File::create(c_file_name).unwrap();
+        let _ = write!(file, "{}", c_code);
+        let _ = Command::new("gcc")
+            .args([c_file_name])
+            .output()
+            .expect("failed to execute process (requires gcc)");
+        fs::remove_file(c_file_name).unwrap();
+        return;
     }
 
     let array = interpreter(instructions);
