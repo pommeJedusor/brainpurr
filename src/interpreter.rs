@@ -1,8 +1,8 @@
 use std::io;
 
-use crate::parser::Instruction;
+use crate::{InputMethod, parser::Instruction};
 
-pub fn interpreter(instructions: Vec<Instruction>) -> Vec<u8> {
+pub fn interpreter(instructions: Vec<Instruction>, input_method: &InputMethod) -> Vec<u8> {
     let mut array: Vec<u8> = vec![0];
     let mut array_pointer = 0;
     let mut instruction_pointer = 0;
@@ -20,13 +20,29 @@ pub fn interpreter(instructions: Vec<Instruction>) -> Vec<u8> {
             Instruction::ByteIncrement => array[array_pointer] = array[array_pointer].wrapping_add(1),
             Instruction::ByteDecrement => array[array_pointer] = array[array_pointer].wrapping_sub(1),
             Instruction::ByteInput => {
-                while input_queue.len() == 0 {
-                    let mut input = String::new();
-                    io::stdin().read_line(&mut input).expect("error: unable to read user input");
-                    input_queue = input.into_bytes();
-                    input_queue.reverse();
-                }
-                array[array_pointer] = input_queue.pop().unwrap();
+                match input_method {
+                    InputMethod::Normal => {
+                        while input_queue.len() == 0 {
+                            let mut input = String::new();
+                            io::stdin().read_line(&mut input).expect("error: unable to read user input");
+                            input_queue = input.into_bytes();
+                            input_queue.reverse();
+                            array[array_pointer] = input_queue.pop().unwrap();
+                        }
+                    },
+                    InputMethod::FirstCharOnly => {
+                        let mut input = String::new();
+                        io::stdin().read_line(&mut input).expect("error: unable to read user input");
+                        let input = input.chars().next().unwrap() as u8;
+                        array[array_pointer] = input;
+                    },
+                    InputMethod::ByteAsNumber => {
+                        let mut input = String::new();
+                        io::stdin().read_line(&mut input).expect("error: unable to read user input");
+                        let input = input[0..input.len() - 1].parse().expect("error: unable to parse user input into a single byte");
+                        array[array_pointer] = input;
+                    },
+                };
             },
             Instruction::ByteOutput => print!("{}", array[array_pointer] as char),
             Instruction::OpenLoop(close_loop_index) => if array[array_pointer] == 0{instruction_pointer = close_loop_index},
@@ -45,37 +61,37 @@ mod tests {
 
     #[test]
     fn increment(){
-        assert_eq!(interpreter(vec![Instruction::ByteIncrement]), vec![1]);
+        assert_eq!(interpreter(vec![Instruction::ByteIncrement], &InputMethod::Normal), vec![1]);
     }
 
     #[test]
     fn increment_overflow(){
-        assert_eq!(interpreter(vec![Instruction::ByteIncrement; 256]), vec![0]);
+        assert_eq!(interpreter(vec![Instruction::ByteIncrement; 256], &InputMethod::Normal), vec![0]);
     }
 
     #[test]
     fn decrement(){
-        assert_eq!(interpreter(vec![Instruction::ByteIncrement, Instruction::ByteDecrement]), vec![0]);
+        assert_eq!(interpreter(vec![Instruction::ByteIncrement, Instruction::ByteDecrement], &InputMethod::Normal), vec![0]);
     }
 
     #[test]
     fn decrement_overflow(){
-        assert_eq!(interpreter(vec![Instruction::ByteDecrement; 256]), vec![0]);
+        assert_eq!(interpreter(vec![Instruction::ByteDecrement; 256], &InputMethod::Normal), vec![0]);
     }
 
     #[test]
     fn pointer_increment(){
-        assert_eq!(interpreter(vec![Instruction::PointerIncrement, Instruction::ByteIncrement]), vec![0, 1]);
+        assert_eq!(interpreter(vec![Instruction::PointerIncrement, Instruction::ByteIncrement], &InputMethod::Normal), vec![0, 1]);
     }
 
     #[test]
     fn pointer_decrement(){
-        assert_eq!(interpreter(vec![Instruction::PointerIncrement, Instruction::PointerDecrement, Instruction::ByteIncrement]), vec![1, 0]);
+        assert_eq!(interpreter(vec![Instruction::PointerIncrement, Instruction::PointerDecrement, Instruction::ByteIncrement], &InputMethod::Normal), vec![1, 0]);
     }
 
     #[test]
     #[should_panic]
     fn pointer_decrement_overflow(){
-        interpreter(vec![Instruction::PointerDecrement]);
+        interpreter(vec![Instruction::PointerDecrement], &InputMethod::Normal);
     }
 }

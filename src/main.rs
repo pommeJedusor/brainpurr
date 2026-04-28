@@ -36,6 +36,21 @@ struct Args {
     /// compiles the code (requires gcc)
     #[arg(long)]
     compile: bool,
+
+    /// input method
+    #[clap(value_enum)]
+    #[arg(long, default_value_t=InputMethod::Normal)]
+    input: InputMethod,
+}
+
+#[derive(clap::ValueEnum, Debug, Clone)]
+enum InputMethod {
+    /// interprets the input byte per byte including the \n
+    Normal,
+    /// only takes the first byte from each line
+    FirstCharOnly,
+    /// interprets the line as a number represented number (must be between 0 and 255 included)
+    ByteAsNumber,
 }
 
 fn main() {
@@ -46,6 +61,7 @@ fn main() {
         false => parser::parse_file(path),
         true => bf_parser::parse_file(path),
     };
+    let input_method = args.input;
 
     if args.to_brainpurr {
         return println!("{}", parser::unparse(instructions));
@@ -60,7 +76,7 @@ fn main() {
         return compiler::compile_to_file(&instructions, None);
     }
 
-    let array = interpreter(instructions);
+    let array = interpreter(instructions, &input_method);
     if args.show_final_array {
         println!("\nfinal array: {:?}", array);
     }
