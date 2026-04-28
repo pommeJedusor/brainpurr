@@ -6,6 +6,7 @@ pub fn interpreter(instructions: Vec<Instruction>) -> Vec<u8> {
     let mut array: Vec<u8> = vec![0];
     let mut array_pointer = 0;
     let mut instruction_pointer = 0;
+    let mut input_queue = vec![];
 
     while instruction_pointer < instructions.len(){
         match instructions[instruction_pointer] {
@@ -19,10 +20,13 @@ pub fn interpreter(instructions: Vec<Instruction>) -> Vec<u8> {
             Instruction::ByteIncrement => array[array_pointer] = array[array_pointer].wrapping_add(1),
             Instruction::ByteDecrement => array[array_pointer] = array[array_pointer].wrapping_sub(1),
             Instruction::ByteInput => {
-              let mut input = String::new();
-              io::stdin().read_line(&mut input).expect("error: unable to read user input");
-              let input = input.chars().next().unwrap() as u8;
-              array[array_pointer] = input;
+                while input_queue.len() == 0 {
+                    let mut input = String::new();
+                    io::stdin().read_line(&mut input).expect("error: unable to read user input");
+                    input_queue = input.into_bytes();
+                    input_queue.reverse();
+                }
+                array[array_pointer] = input_queue.pop().unwrap();
             },
             Instruction::ByteOutput => print!("{}", array[array_pointer] as char),
             Instruction::OpenLoop(close_loop_index) => if array[array_pointer] == 0{instruction_pointer = close_loop_index},
