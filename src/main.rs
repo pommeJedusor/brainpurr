@@ -70,10 +70,10 @@ fn main() {
         return println!("{}", bf_parser::unparse(instructions));
     }
     if args.to_c {
-        return println!("{}", compiler::compile_to_c(&instructions, None));
+        return println!("{}", compiler::compile_to_c(&instructions, None, &input_method));
     }
     if args.compile {
-        return compiler::compile_to_file(&instructions, None);
+        return compiler::compile_to_file(&instructions, None, &input_method);
     }
 
     let array = interpreter(instructions, &input_method);

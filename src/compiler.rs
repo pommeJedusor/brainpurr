@@ -1,20 +1,25 @@
 use std::{fs::{self, File}, ops::Add, io::Write, process::Command};
 
-use crate::parser::Instruction;
+use crate::{InputMethod, parser::Instruction};
 
-pub fn compile_to_c(instructions: &Vec<Instruction>, max_array_size: Option<u32>) -> String {
+pub fn compile_to_c(instructions: &Vec<Instruction>, max_array_size: Option<u32>, input_method: &InputMethod) -> String {
     let max_array_size = max_array_size.unwrap_or(67000);
 
     let c_file = "#include <stdio.h>\n".to_string();
     let c_file = c_file.add(&format!("const unsigned long ARRAY_LENGTH = {};\n", max_array_size));
-    let c_file = c_file.add("void main(){\nchar array[ARRAY_LENGTH];\nfor (int i=0;i<ARRAY_LENGTH;i++){\narray[i] = 0;\n}\nunsigned int pointer = 0;\n");
+    // TODO make the input array size customizable
+    let c_file = c_file.add("void main(){\nchar array[ARRAY_LENGTH];\nchar input[100];\nfor (int i=0;i<ARRAY_LENGTH;i++){\narray[i] = 0;\n}\nunsigned int pointer = 0;\n");
 
     let c_file = c_file.add(&instructions.iter().map(|x| match x{
         Instruction::PointerIncrement => "pointer++;",
         Instruction::PointerDecrement => "pointer--;",
         Instruction::ByteIncrement => "array[pointer]++;",
         Instruction::ByteDecrement => "array[pointer]--;",
-        Instruction::ByteInput => "scanf(\"%c\", &array[pointer]);",
+        Instruction::ByteInput => match input_method{
+            InputMethod::Normal => "scanf(\"%c\", &array[pointer]);",
+            InputMethod::FirstCharOnly => "scanf(\"%s\", &input);array[pointer] = input[0];",
+            InputMethod::ByteAsNumber => "scanf(\"%d\", &array[pointer]);",
+        },
         Instruction::ByteOutput => "printf(\"%c\", array[pointer]);",
         Instruction::OpenLoop(_) => "while (array[pointer] != 0){",
         Instruction::CloseLoop(_) => "}",
@@ -25,8 +30,8 @@ pub fn compile_to_c(instructions: &Vec<Instruction>, max_array_size: Option<u32>
     c_file
 }
 
-pub fn compile_to_file(instructions: &Vec<Instruction>, max_array_size: Option<u32>){
-    let c_code = compile_to_c(instructions, max_array_size);
+pub fn compile_to_file(instructions: &Vec<Instruction>, max_array_size: Option<u32>, input_method: &InputMethod){
+    let c_code = compile_to_c(instructions, max_array_size, input_method);
     let c_file_name = "temp-jq7uvwn9up6u1wqpg756wh3flkyrmb9qwogro9j9.c";
     let mut file = File::create(c_file_name).expect("failed to create temporary file for compiling");
     let _ = write!(file, "{}", c_code);
