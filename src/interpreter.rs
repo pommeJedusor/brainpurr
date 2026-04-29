@@ -1,4 +1,4 @@
-use std::io;
+use std::io::{self, Write};
 
 use crate::{InputMethod, OutputMethod, parser::Instruction};
 
@@ -45,7 +45,10 @@ pub fn interpreter(instructions: Vec<Instruction>, input_method: &InputMethod, o
                 };
             },
             Instruction::ByteOutput => match output_method{
-                OutputMethod::Normal => print!("{}", array[array_pointer] as char),
+                OutputMethod::Normal => {
+                    print!("{}", array[array_pointer] as char);
+                    io::stdout().flush().unwrap();
+                },
                 OutputMethod::ByteAsNumber => println!("{}", array[array_pointer]),
             },
             Instruction::OpenLoop(close_loop_index) => if array[array_pointer] == 0{instruction_pointer = close_loop_index},
