@@ -41,6 +41,11 @@ struct Args {
     #[clap(value_enum)]
     #[arg(long, default_value_t=InputMethod::Normal)]
     input: InputMethod,
+
+    /// output method
+    #[clap(value_enum)]
+    #[arg(long, default_value_t=OutputMethod::Normal)]
+    output: OutputMethod,
 }
 
 #[derive(clap::ValueEnum, Debug, Clone)]
@@ -53,6 +58,14 @@ enum InputMethod {
     ByteAsNumber,
 }
 
+#[derive(clap::ValueEnum, Debug, Clone)]
+enum OutputMethod {
+    /// outputs each byte as ascii
+    Normal,
+    /// outputs each byte as a number
+    ByteAsNumber,
+}
+
 fn main() {
     let args = Args::parse();
 
@@ -62,6 +75,7 @@ fn main() {
         true => bf_parser::parse_file(path),
     };
     let input_method = args.input;
+    let output_method = args.output;
 
     if args.to_brainpurr {
         return println!("{}", parser::unparse(instructions));
@@ -70,13 +84,13 @@ fn main() {
         return println!("{}", bf_parser::unparse(instructions));
     }
     if args.to_c {
-        return println!("{}", compiler::compile_to_c(&instructions, None, &input_method));
+        return println!("{}", compiler::compile_to_c(&instructions, None, &input_method, &output_method));
     }
     if args.compile {
-        return compiler::compile_to_file(&instructions, None, &input_method);
+        return compiler::compile_to_file(&instructions, None, &input_method, &output_method);
     }
 
-    let array = interpreter(instructions, &input_method);
+    let array = interpreter(instructions, &input_method, &output_method);
     if args.show_final_array {
         println!("\nfinal array: {:?}", array);
     }

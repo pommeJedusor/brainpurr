@@ -1,8 +1,8 @@
 use std::io;
 
-use crate::{InputMethod, parser::Instruction};
+use crate::{InputMethod, OutputMethod, parser::Instruction};
 
-pub fn interpreter(instructions: Vec<Instruction>, input_method: &InputMethod) -> Vec<u8> {
+pub fn interpreter(instructions: Vec<Instruction>, input_method: &InputMethod, output_method: &OutputMethod) -> Vec<u8> {
     let mut array: Vec<u8> = vec![0];
     let mut array_pointer = 0;
     let mut instruction_pointer = 0;
@@ -44,7 +44,10 @@ pub fn interpreter(instructions: Vec<Instruction>, input_method: &InputMethod) -
                     },
                 };
             },
-            Instruction::ByteOutput => print!("{}", array[array_pointer] as char),
+            Instruction::ByteOutput => match output_method{
+                OutputMethod::Normal => print!("{}", array[array_pointer] as char),
+                OutputMethod::ByteAsNumber => println!("{}", array[array_pointer]),
+            },
             Instruction::OpenLoop(close_loop_index) => if array[array_pointer] == 0{instruction_pointer = close_loop_index},
             Instruction::CloseLoop(open_loop_index) => if array[array_pointer] != 0{instruction_pointer = open_loop_index},
         }
@@ -61,37 +64,37 @@ mod tests {
 
     #[test]
     fn increment(){
-        assert_eq!(interpreter(vec![Instruction::ByteIncrement], &InputMethod::Normal), vec![1]);
+        assert_eq!(interpreter(vec![Instruction::ByteIncrement], &InputMethod::Normal, &OutputMethod::Normal), vec![1]);
     }
 
     #[test]
     fn increment_overflow(){
-        assert_eq!(interpreter(vec![Instruction::ByteIncrement; 256], &InputMethod::Normal), vec![0]);
+        assert_eq!(interpreter(vec![Instruction::ByteIncrement; 256], &InputMethod::Normal, &OutputMethod::Normal), vec![0]);
     }
 
     #[test]
     fn decrement(){
-        assert_eq!(interpreter(vec![Instruction::ByteIncrement, Instruction::ByteDecrement], &InputMethod::Normal), vec![0]);
+        assert_eq!(interpreter(vec![Instruction::ByteIncrement, Instruction::ByteDecrement], &InputMethod::Normal, &OutputMethod::Normal), vec![0]);
     }
 
     #[test]
     fn decrement_overflow(){
-        assert_eq!(interpreter(vec![Instruction::ByteDecrement; 256], &InputMethod::Normal), vec![0]);
+        assert_eq!(interpreter(vec![Instruction::ByteDecrement; 256], &InputMethod::Normal, &OutputMethod::Normal), vec![0]);
     }
 
     #[test]
     fn pointer_increment(){
-        assert_eq!(interpreter(vec![Instruction::PointerIncrement, Instruction::ByteIncrement], &InputMethod::Normal), vec![0, 1]);
+        assert_eq!(interpreter(vec![Instruction::PointerIncrement, Instruction::ByteIncrement], &InputMethod::Normal, &OutputMethod::Normal), vec![0, 1]);
     }
 
     #[test]
     fn pointer_decrement(){
-        assert_eq!(interpreter(vec![Instruction::PointerIncrement, Instruction::PointerDecrement, Instruction::ByteIncrement], &InputMethod::Normal), vec![1, 0]);
+        assert_eq!(interpreter(vec![Instruction::PointerIncrement, Instruction::PointerDecrement, Instruction::ByteIncrement], &InputMethod::Normal, &OutputMethod::Normal), vec![1, 0]);
     }
 
     #[test]
     #[should_panic]
     fn pointer_decrement_overflow(){
-        interpreter(vec![Instruction::PointerDecrement], &InputMethod::Normal);
+        interpreter(vec![Instruction::PointerDecrement], &InputMethod::Normal, &OutputMethod::Normal);
     }
 }
