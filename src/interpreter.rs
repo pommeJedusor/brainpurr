@@ -27,8 +27,8 @@ pub fn interpreter(instructions: Vec<Instruction>, input_method: &InputMethod, o
                             io::stdin().read_line(&mut input).expect("error: unable to read user input");
                             input_queue = input.into_bytes();
                             input_queue.reverse();
-                            array[array_pointer] = input_queue.pop().unwrap();
                         }
+                        array[array_pointer] = input_queue.pop().unwrap();
                     },
                     InputMethod::FirstCharOnly => {
                         let mut input = String::new();
