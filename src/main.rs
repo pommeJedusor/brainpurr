@@ -90,7 +90,7 @@ fn main() {
         return compiler::compile_to_file(&instructions, None, &input_method, &output_method);
     }
 
-    let array = interpreter(instructions, &input_method, &output_method);
+    let array = interpreter(instructions, &input_method, &output_method, &mut std::io::stdout());
     if args.show_final_array {
         println!("\nfinal array: {:?}", array);
     }
