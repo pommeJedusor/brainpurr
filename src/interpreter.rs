@@ -66,6 +66,7 @@ pub fn interpreter(instructions: Vec<Instruction>, input_method: &InputMethod, o
 #[cfg(test)]
 mod tests {
     use super::*;
+    use assert_cmd::Command;
 
     #[test]
     fn increment(){
@@ -104,6 +105,39 @@ mod tests {
     }
 
     #[test]
+    fn input_normal_mode(){
+        let mut cmd = Command::cargo_bin("brainpurr").unwrap();
+        let _ = cmd
+            .args(&["./examples/echo.bp"])
+            .write_stdin("pomme is cute\n")
+            .assert()
+            .code(0)
+            .stdout("pomme is cute\n");
+    }
+
+    #[test]
+    fn input_first_char_only_mode(){
+        let mut cmd = Command::cargo_bin("brainpurr").unwrap();
+        let _ = cmd
+            .args(&["./examples/echo.bp", "--input", "first-char-only"])
+            .write_stdin("pomme is cute\n".chars().map(|x| x.to_string()).collect::<Vec<String>>().join("\n"))
+            .assert()
+            .code(0)
+            .stdout("pomme is cute\n");
+    }
+
+    #[test]
+    fn input_byte_as_number_mode(){
+        let mut cmd = Command::cargo_bin("brainpurr").unwrap();
+        let _ = cmd
+            .args(&["./examples/echo.bp", "--input", "byte-as-number"])
+            .write_stdin("pomme is cute\n".chars().map(|x| format!("{}\n", x as u8)).collect::<String>())
+            .assert()
+            .code(0)
+            .stdout("pomme is cute\n");
+    }
+
+    #[test]
     fn output_normal_mode(){
         let mut instructions = vec![Instruction::ByteIncrement; 67];
         instructions.push(Instruction::ByteOutput);
@@ -119,5 +153,32 @@ mod tests {
         let mut result = vec![];
         interpreter(instructions, &InputMethod::Normal, &OutputMethod::ByteAsNumber, &mut result);
         assert_eq!(result, vec!['6' as u8, '7' as u8, '\n' as u8])
+    }
+
+    #[test]
+    fn nya_loop(){
+        let mut instructions = vec![
+            Instruction::ByteIncrement,
+            Instruction::ByteIncrement,
+            Instruction::ByteIncrement,
+            Instruction::ByteIncrement,
+            Instruction::ByteIncrement,
+            Instruction::ByteIncrement,
+            Instruction::ByteIncrement,
+            Instruction::OpenLoop(16),
+            Instruction::ByteDecrement,
+            Instruction::PointerIncrement,
+            Instruction::ByteIncrement,
+            Instruction::ByteIncrement,
+            Instruction::ByteIncrement,
+            Instruction::ByteIncrement,
+            Instruction::ByteIncrement,
+            Instruction::ByteIncrement,
+            Instruction::PointerDecrement,
+            Instruction::CloseLoop(7),
+        ];
+        instructions.push(Instruction::ByteOutput);
+        let result = interpreter(instructions, &InputMethod::Normal, &OutputMethod::ByteAsNumber, &mut vec![]);
+        assert_eq!(result, vec![0, 42])
     }
 }
