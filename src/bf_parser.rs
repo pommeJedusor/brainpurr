@@ -70,4 +70,16 @@ mod tests {
     fn unparsing(){
         assert_eq!(unparse(vec![Instruction::PointerIncrement, Instruction::PointerDecrement, Instruction::ByteIncrement, Instruction::ByteDecrement, Instruction::ByteOutput, Instruction::ByteInput, Instruction::OpenLoop(7), Instruction::CloseLoop(6)]), "><+-.,[]");
     }
+
+    #[test]
+    #[should_panic]
+    fn to_many_open_loop(){
+        parse("[[]");
+    }
+
+    #[test]
+    #[should_panic]
+    fn to_many_close_loop(){
+        parse("[]]");
+    }
 }
