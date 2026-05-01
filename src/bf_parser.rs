@@ -73,13 +73,13 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn to_many_open_loop(){
+    fn too_many_open_loop(){
         parse("[[]");
     }
 
     #[test]
     #[should_panic]
-    fn to_many_close_loop(){
+    fn too_many_close_loop(){
         parse("[]]");
     }
 }
