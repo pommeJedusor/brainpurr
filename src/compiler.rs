@@ -8,11 +8,12 @@ pub fn compile_to_c(instructions: &Vec<Instruction>, max_array_size: Option<u32>
     let c_file = "#include <stdio.h>\n".to_string();
     let c_file = c_file.add(&format!("const unsigned long ARRAY_LENGTH = {};\n", max_array_size));
     // TODO make the input array size customizable
-    let c_file = c_file.add("void main(){\nchar array[ARRAY_LENGTH];\nchar input[100];\nfor (int i=0;i<ARRAY_LENGTH;i++){\narray[i] = 0;\n}\nunsigned int pointer = 0;\n");
+    let c_file = c_file.add("int main(){\nchar array[ARRAY_LENGTH];\nchar input[100];\nfor (int i=0;i<ARRAY_LENGTH;i++){\narray[i] = 0;\n}\nunsigned long pointer = 0;\n");
 
+    // TODO stderr, stdout handling
     let c_file = c_file.add(&instructions.iter().map(|x| match x{
-        Instruction::PointerIncrement => "pointer++;",
-        Instruction::PointerDecrement => "pointer--;",
+        Instruction::PointerIncrement => "if (pointer >= ARRAY_LENGTH - 1){printf(\"pointer overflow\\n\");return 1;}pointer++;",
+        Instruction::PointerDecrement => "if (pointer == 0){printf(\"pointer underflow\");return 1;}pointer--;",
         Instruction::ByteIncrement => "array[pointer]++;",
         Instruction::ByteDecrement => "array[pointer]--;",
         Instruction::ByteInput => match input_method{
@@ -28,7 +29,7 @@ pub fn compile_to_c(instructions: &Vec<Instruction>, max_array_size: Option<u32>
         Instruction::CloseLoop(_) => "}",
     }).collect::<Vec<&str>>().join("\n"));
 
-    let c_file = c_file.add("}");
+    let c_file = c_file.add("return 0;}");
 
     c_file
 }
@@ -87,9 +88,9 @@ mod tests {
             .args(args)
             .assert()
             .code(0);
-        let cmd = Command::new(exe_name).write_stdin(stdin).unwrap();
-        let _ = cmd
-            .assert()
+        let cmd = Command::new(exe_name).write_stdin(stdin).assert();
+        cmd
+            .code(1)
             .failure();
         fs::remove_file(exe_name).unwrap();
     }
@@ -116,21 +117,19 @@ mod tests {
     fn pointer_increment(){
         expect_success("./pointer_increment.out", &vec!["./examples/tests/pointer_increment.bp", "--compile", "--gcc-args", "-o pointer_increment.out"], "C\n", "");
     }
-    // TODO fix code
-    //#[test]
-    //fn pointer_increment_overflow(){
-    //    expect_binary_failure("./pointer_increment_overflow.out", &vec!["./examples/tests/pointer_increment_overflow.bp", "--compile", "--gcc-args", "-o pointer_increment_overflow.out"], "");
-    //}
+    #[test]
+    fn pointer_increment_overflow(){
+        expect_binary_failure("./pointer_increment_overflow.out", &vec!["./examples/tests/pointer_increment_overflow.bp", "--compile", "--gcc-args", "-o pointer_increment_overflow.out"], "");
+    }
 
     #[test]
     fn pointer_decrement(){
         expect_success("./pointer_decrement.out", &vec!["./examples/tests/pointer_decrement.bp", "--compile", "--gcc-args", "-o pointer_decrement.out"], "C\n", "");
     }
-    // TODO fix code
-    //#[test]
-    //fn pointer_decrement_overflow(){
-    //    expect_binary_failure("./pointer_decrement_overflow.out", &vec!["./examples/tests/pointer_decrement_overflow.bp", "--compile", "--gcc-args", "-o pointer_decrement_overflow.out"], "");
-    //}
+    #[test]
+    fn pointer_decrement_overflow(){
+        expect_binary_failure("./pointer_decrement_overflow.out", &vec!["./examples/tests/pointer_decrement_overflow.bp", "--compile", "--gcc-args", "-o pointer_decrement_overflow.out"], "");
+    }
 
     #[test]
     fn input(){
