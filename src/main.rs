@@ -37,6 +37,10 @@ struct Args {
     #[arg(long)]
     compile: bool,
 
+    /// the length of the array (only works for compiler)
+    #[arg(long, default_value_t=67000)]
+    max_array_size: u32,
+
     /// arguments to pass to gcc when compiling the code from c to binary
     #[arg(long, allow_hyphen_values = true)]
     gcc_args: Option<String>,
@@ -81,6 +85,8 @@ fn main() {
     let input_method = args.input;
     let output_method = args.output;
     let gcc_args = args.gcc_args.unwrap_or("".to_string());
+    // TODO implement max_array_size for interpreter
+    let max_array_size = args.max_array_size;
 
     if args.to_brainpurr {
         return println!("{}", parser::unparse(instructions));
@@ -89,11 +95,11 @@ fn main() {
         return println!("{}", bf_parser::unparse(instructions));
     }
     if args.to_c {
-        return println!("{}", compiler::compile_to_c(&instructions, None, &input_method, &output_method));
+        return println!("{}", compiler::compile_to_c(&instructions, Some(max_array_size), &input_method, &output_method));
     }
     if args.compile {
         let gcc_args = gcc_args.split(" ").filter(|x| x != &"").collect::<Vec<&str>>();
-        return compiler::compile_to_file(&instructions, None, &input_method, &output_method, &gcc_args);
+        return compiler::compile_to_file(&instructions, Some(max_array_size), &input_method, &output_method, &gcc_args);
     }
 
     let array = interpreter(instructions, &input_method, &output_method, &mut std::io::stdout());

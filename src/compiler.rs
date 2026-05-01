@@ -10,10 +10,9 @@ pub fn compile_to_c(instructions: &Vec<Instruction>, max_array_size: Option<u32>
     // TODO make the input array size customizable
     let c_file = c_file.add("int main(){\nchar array[ARRAY_LENGTH];\nchar input[100];\nfor (int i=0;i<ARRAY_LENGTH;i++){\narray[i] = 0;\n}\nunsigned long pointer = 0;\n");
 
-    // TODO stderr, stdout handling
     let c_file = c_file.add(&instructions.iter().map(|x| match x{
-        Instruction::PointerIncrement => "if (pointer >= ARRAY_LENGTH - 1){printf(\"pointer overflow\\n\");return 1;}pointer++;",
-        Instruction::PointerDecrement => "if (pointer == 0){printf(\"pointer underflow\");return 1;}pointer--;",
+        Instruction::PointerIncrement => "if (pointer >= ARRAY_LENGTH - 1){fprintf(stderr, \"pointer overflow\\n\");return 1;}pointer++;",
+        Instruction::PointerDecrement => "if (pointer == 0){fprintf(stderr, \"pointer underflow\");return 1;}pointer--;",
         Instruction::ByteIncrement => "array[pointer]++;",
         Instruction::ByteDecrement => "array[pointer]--;",
         Instruction::ByteInput => match input_method{
@@ -89,9 +88,7 @@ mod tests {
             .assert()
             .code(0);
         let cmd = Command::new(exe_name).write_stdin(stdin).assert();
-        cmd
-            .code(1)
-            .failure();
+        cmd.code(1).failure().stdout(predicate::str::is_empty());
         fs::remove_file(exe_name).unwrap();
     }
 
@@ -161,5 +158,25 @@ mod tests {
         expect_success("./output_byte_as_number.out", &vec!["./examples/echo.bp", "--output", "byte-as-number", "--compile", "--gcc-args", "-o output_byte_as_number.out"], "67\n10\n", "C\n");
     }
 
-    // TODO loops, max array size, input method, output method
+    #[test]
+    fn useless_loop(){
+        expect_success("./useless_loop.out", &vec!["./examples/tests/useless_loop.bp", "--compile", "--gcc-args", "-o useless_loop.out"], "\0", "");
+    }
+    #[test]
+    fn useful_loop(){
+        expect_success("./useful_loop.out", &vec!["./examples/tests/useful_loop.bp", "--compile", "--gcc-args", "-o useful_loop.out"], "\n", "");
+    }
+
+    #[test]
+    fn max_array_size_border(){
+        expect_success("./max_array_size_border.out", &vec!["./examples/tests/max_array_size_border.bp", "--compile", "--gcc-args", "-o max_array_size_border.out", "--max-array-size", "10"], "", "");
+    }
+    #[test]
+    fn max_array_size_overflow(){
+        expect_binary_failure("./max_array_size_overflow.out", &vec!["./examples/tests/max_array_size_border.bp", "--compile", "--gcc-args", "-o max_array_size_overflow.out", "--max-array-size", "9"], "");
+    }
+    #[test]
+    fn array_empty(){
+        expect_binary_failure("./array_empty.out", &vec!["./examples/tests/array_empty.bp", "--compile", "--gcc-args", "-o array_empty.out", "--max-array-size", "1000000"], "");
+    }
 }
