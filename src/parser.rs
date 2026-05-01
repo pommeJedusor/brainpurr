@@ -80,4 +80,16 @@ mod tests {
     fn unparsing(){
         assert_eq!(unparse(vec![Instruction::PointerIncrement, Instruction::PointerDecrement, Instruction::ByteIncrement, Instruction::ByteDecrement, Instruction::ByteOutput, Instruction::ByteInput, Instruction::OpenLoop(7), Instruction::CloseLoop(6)]), "meow mrow mrp purr :3c >:3 nya :3");
     }
+
+    #[test]
+    #[should_panic]
+    fn too_many_open_loop(){
+        parse("nya nya :3");
+    }
+
+    #[test]
+    #[should_panic]
+    fn too_many_close_loop(){
+        parse("nya :3 :3");
+    }
 }
