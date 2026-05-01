@@ -37,6 +37,10 @@ struct Args {
     #[arg(long)]
     compile: bool,
 
+    /// arguments to pass to gcc when compiling the code from c to binary
+    #[arg(long, allow_hyphen_values = true)]
+    gcc_args: Option<String>,
+
     /// input method
     #[clap(value_enum)]
     #[arg(long, default_value_t=InputMethod::Normal)]
@@ -48,7 +52,7 @@ struct Args {
     output: OutputMethod,
 }
 
-#[derive(clap::ValueEnum, Debug, Clone)]
+#[derive(clap::ValueEnum, Debug, Clone, Hash)]
 enum InputMethod {
     /// interprets the input byte per byte including the \n
     Normal,
@@ -58,7 +62,7 @@ enum InputMethod {
     ByteAsNumber,
 }
 
-#[derive(clap::ValueEnum, Debug, Clone)]
+#[derive(clap::ValueEnum, Debug, Clone, Hash)]
 enum OutputMethod {
     /// outputs each byte as ascii
     Normal,
@@ -76,6 +80,7 @@ fn main() {
     };
     let input_method = args.input;
     let output_method = args.output;
+    let gcc_args = args.gcc_args.unwrap_or("".to_string());
 
     if args.to_brainpurr {
         return println!("{}", parser::unparse(instructions));
@@ -87,7 +92,8 @@ fn main() {
         return println!("{}", compiler::compile_to_c(&instructions, None, &input_method, &output_method));
     }
     if args.compile {
-        return compiler::compile_to_file(&instructions, None, &input_method, &output_method);
+        let gcc_args = gcc_args.split(" ").filter(|x| x != &"").collect::<Vec<&str>>();
+        return compiler::compile_to_file(&instructions, None, &input_method, &output_method, &gcc_args);
     }
 
     let array = interpreter(instructions, &input_method, &output_method, &mut std::io::stdout());
