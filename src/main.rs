@@ -16,9 +16,9 @@ fn main() {
         false => parser::parse_file(path),
         true => bf_parser::parse_file(path),
     };
-    let input_method = args.input;
-    let output_method = args.output;
-    let gcc_args = args.gcc_args.unwrap_or("".to_string());
+    let input_method = &args.input;
+    let output_method = &args.output;
+    let gcc_args = args.gcc_args.clone().unwrap_or("".to_string());
     // TODO implement max_array_size for interpreter
     let max_array_size = args.max_array_size;
 
@@ -36,7 +36,7 @@ fn main() {
         return compiler::compile_to_file(&instructions, Some(max_array_size), &input_method, &output_method, &gcc_args);
     }
 
-    let array = interpreter(instructions, &input_method, &output_method, &mut std::io::stdout());
+    let array = interpreter(instructions, &args, &mut std::io::stdout());
     if args.show_final_array {
         println!("\nfinal array: {:?}", array);
     }

@@ -72,3 +72,15 @@ pub enum OutputMethod {
     /// outputs each byte as a number
     ByteAsNumber,
 }
+
+pub trait InterpreterArgs{
+    fn get_input_method(&self) -> &InputMethod;
+    fn get_output_method(&self) -> &OutputMethod;
+    fn get_newline_zero(&self) -> bool;
+}
+
+impl InterpreterArgs for Args {
+    fn get_input_method(&self) -> &InputMethod { &self.input }
+    fn get_output_method(&self) -> &OutputMethod { &self.output }
+    fn get_newline_zero(&self) -> bool { self.newline_zero }
+}
