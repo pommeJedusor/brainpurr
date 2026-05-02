@@ -68,7 +68,7 @@ mod tests {
     use assert_cmd::{Command, assert::OutputAssertExt};
     use predicates::prelude::predicate;
 
-    fn expect_success(exe_name: &str, args: &Vec<&str>, expected_output: &str, stdin: &str){
+    fn expect_success(exe_name: &str, args: &Vec<&str>, stdin: &str, expected_output: &str){
         let mut cmd = Command::cargo_bin("brainpurr").unwrap();
         cmd
             .args(args)
@@ -101,25 +101,25 @@ mod tests {
 
     #[test]
     fn increment(){
-        expect_success("./increment.out", &vec!["./examples/tests/increment.bp", "--compile", "--gcc-args", "-o increment.out"], "C", "");
+        expect_success("./increment.out", &vec!["./examples/tests/increment.bp", "--compile", "--gcc-args", "-o increment.out"], "", "C");
     }
     #[test]
     fn increment_overflow(){
-        expect_success("./increment_overflow.out", &vec!["./examples/tests/increment_overflow.bp", "--compile", "--gcc-args", "-o increment_overflow.out"], "C", "");
+        expect_success("./increment_overflow.out", &vec!["./examples/tests/increment_overflow.bp", "--compile", "--gcc-args", "-o increment_overflow.out"], "", "C");
     }
 
     #[test]
     fn decrement(){
-        expect_success("./decrement.out", &vec!["./examples/tests/decrement.bp", "--compile", "--gcc-args", "-o decrement.out"], "C", "");
+        expect_success("./decrement.out", &vec!["./examples/tests/decrement.bp", "--compile", "--gcc-args", "-o decrement.out"], "", "C");
     }
     #[test]
     fn decrement_overflow(){
-        expect_success("./decrement_overflow.out", &vec!["./examples/tests/decrement_overflow.bp", "--compile", "--gcc-args", "-o decrement_overflow.out"], "C", "");
+        expect_success("./decrement_overflow.out", &vec!["./examples/tests/decrement_overflow.bp", "--compile", "--gcc-args", "-o decrement_overflow.out"], "", "C");
     }
 
     #[test]
     fn pointer_increment(){
-        expect_success("./pointer_increment.out", &vec!["./examples/tests/pointer_increment.bp", "--compile", "--gcc-args", "-o pointer_increment.out"], "C\n", "");
+        expect_success("./pointer_increment.out", &vec!["./examples/tests/pointer_increment.bp", "--compile", "--gcc-args", "-o pointer_increment.out"], "", "C\n");
     }
     #[test]
     fn pointer_increment_overflow(){
@@ -128,7 +128,7 @@ mod tests {
 
     #[test]
     fn pointer_decrement(){
-        expect_success("./pointer_decrement.out", &vec!["./examples/tests/pointer_decrement.bp", "--compile", "--gcc-args", "-o pointer_decrement.out"], "C\n", "");
+        expect_success("./pointer_decrement.out", &vec!["./examples/tests/pointer_decrement.bp", "--compile", "--gcc-args", "-o pointer_decrement.out"], "", "C\n");
     }
     #[test]
     fn pointer_decrement_overflow(){
@@ -145,16 +145,16 @@ mod tests {
     }
     #[test]
     fn input_first_char_only(){
-        expect_success("./input_first_char_only.out", &vec!["./examples/echo.bp", "--input", "first-char-only", "--compile", "--gcc-args", "-o input_first_char_only.out"], "p\n", &"p\n".chars().map(|x| x.to_string()).collect::<Vec<String>>().join("\n"));
+        expect_success("./input_first_char_only.out", &vec!["./examples/echo.bp", "--input", "first-char-only", "--compile", "--gcc-args", "-o input_first_char_only.out"], &"p\n".chars().map(|x| x.to_string()).collect::<Vec<String>>().join("\n"), "p\n");
     }
     #[test]
     fn input_byte_as_number(){
-        expect_success("./input_byte_as_number.out", &vec!["./examples/echo.bp", "--input", "byte-as-number", "--compile", "--gcc-args", "-o input_byte_as_number.out"], "pomme is cute\n", &"pomme is cute\n".chars().map(|x| format!("{}\n", x as u8)).collect::<String>());
+        expect_success("./input_byte_as_number.out", &vec!["./examples/echo.bp", "--input", "byte-as-number", "--compile", "--gcc-args", "-o input_byte_as_number.out"], &"pomme is cute\n".chars().map(|x| format!("{}\n", x as u8)).collect::<String>(), "pomme is cute\n");
     }
 
     #[test]
     fn output(){
-        expect_success("./output.out", &vec!["./examples/tests/output.bp", "--compile", "--gcc-args", "-o output.out"], "\0", "");
+        expect_success("./output.out", &vec!["./examples/tests/output.bp", "--compile", "--gcc-args", "-o output.out"], "", "\0");
     }
     #[test]
     fn output_normal_mode(){
@@ -162,16 +162,16 @@ mod tests {
     }
     #[test]
     fn output_byte_as_number(){
-        expect_success("./output_byte_as_number.out", &vec!["./examples/echo.bp", "--output", "byte-as-number", "--compile", "--gcc-args", "-o output_byte_as_number.out"], "67\n10\n", "C\n");
+        expect_success("./output_byte_as_number.out", &vec!["./examples/echo.bp", "--output", "byte-as-number", "--compile", "--gcc-args", "-o output_byte_as_number.out"], "C\n", "67\n10\n");
     }
 
     #[test]
     fn useless_loop(){
-        expect_success("./useless_loop.out", &vec!["./examples/tests/useless_loop.bp", "--compile", "--gcc-args", "-o useless_loop.out"], "\0", "");
+        expect_success("./useless_loop.out", &vec!["./examples/tests/useless_loop.bp", "--compile", "--gcc-args", "-o useless_loop.out"], "", "\0");
     }
     #[test]
     fn useful_loop(){
-        expect_success("./useful_loop.out", &vec!["./examples/tests/useful_loop.bp", "--compile", "--gcc-args", "-o useful_loop.out"], "\n", "");
+        expect_success("./useful_loop.out", &vec!["./examples/tests/useful_loop.bp", "--compile", "--gcc-args", "-o useful_loop.out"], "", "\n");
     }
 
     #[test]
