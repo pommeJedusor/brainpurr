@@ -29,7 +29,7 @@ impl Instructions{
         let byte_decrement = "array[pointer]--;".to_string();
         let byte_input = match input_method{
                 InputMethod::Normal => format!("scanf(\"%c\", &array[pointer]);{}", newline_zero_input_instruction),
-                InputMethod::FirstCharOnly => format!("while (true){{fgets(input, INPUT_LENGTH, stdin);if (!is_first_char_found){{first_char = input[0];is_first_char_found = true;}}if (input[0] == 10){{break;}}}}array[pointer] = first_char;is_first_char_found = false;{}", newline_zero_input_instruction),
+                InputMethod::FirstCharOnly => format!("while (1){{fgets(input, INPUT_LENGTH, stdin);if (is_first_char_found == 0){{first_char = input[0];is_first_char_found = 1;}}if (input[0] == 10){{break;}}}}array[pointer] = first_char;is_first_char_found = 0;{}", newline_zero_input_instruction),
                 InputMethod::ByteAsNumber => format!("scanf(\"%d\", &array[pointer]);{}", newline_zero_input_instruction),
             };
         let byte_output = match output_method {
@@ -54,7 +54,7 @@ pub fn compile_to_c<T: CompilerArgs>(instructions: &Vec<Instruction>, args: &T) 
 
     let c_file = "#include <stdio.h>\n".to_string();
     let c_file = c_file.add(&format!("const unsigned long ARRAY_LENGTH = {};\nconst int INPUT_LENGTH = 2;\n", max_array_size));
-    let c_file = c_file.add("int main(){\nchar array[ARRAY_LENGTH];\nchar input[INPUT_LENGTH];char first_char = 0;\nbool is_first_char_found;\nfor (int i=0;i<ARRAY_LENGTH;i++){\narray[i] = 0;\n}\nunsigned long pointer = 0;\n");
+    let c_file = c_file.add("int main(){\nchar array[ARRAY_LENGTH];\nchar input[INPUT_LENGTH];char first_char = 0;\nchar is_first_char_found = 0;\nfor (int i=0;i<ARRAY_LENGTH;i++){\narray[i] = 0;\n}\nunsigned long pointer = 0;\n");
 
     let c_file = c_file.add(&instructions.iter().map(|x| match x{
         Instruction::PointerIncrement => &c_instructions.pointer_increment,
