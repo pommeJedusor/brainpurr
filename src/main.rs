@@ -1,78 +1,12 @@
+mod args;
 mod compiler;
 mod interpreter;
 mod parser;
 mod bf_parser;
-use std::path::PathBuf;
 
-use crate::{interpreter::*};
+use crate::{interpreter::*, args::*};
 use clap::{Parser};
 
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
-struct Args {
-    /// the path to the brainpurr file
-    path: PathBuf,
-
-    /// shows the array at the end of the program
-    #[arg(long)]
-    show_final_array: bool,
-
-    /// interprets the file as brainfuck instead of brainpurr
-    #[arg(long)]
-    from_brainfuck: bool,
-
-    /// outputs the brainpurr code instead of running it (useful to translate brainfuck into brainpurr)
-    #[arg(long)]
-    to_brainpurr: bool,
-
-    /// outputs the code as brainfuck instead of running it (useful to translate brainpurr into brainfuck)
-    #[arg(long)]
-    to_brainfuck: bool,
-
-    /// outputs the code as c instead of running it (useful to translate brainpurr into c)
-    #[arg(long)]
-    to_c: bool,
-
-    /// compiles the code (requires gcc)
-    #[arg(long)]
-    compile: bool,
-
-    /// the length of the array (only works for compiler)
-    #[arg(long, default_value_t=67000)]
-    max_array_size: u32,
-
-    /// arguments to pass to gcc when compiling the code from c to binary
-    #[arg(long, allow_hyphen_values = true)]
-    gcc_args: Option<String>,
-
-    /// input method
-    #[clap(value_enum)]
-    #[arg(long, default_value_t=InputMethod::Normal)]
-    input: InputMethod,
-
-    /// output method
-    #[clap(value_enum)]
-    #[arg(long, default_value_t=OutputMethod::Normal)]
-    output: OutputMethod,
-}
-
-#[derive(clap::ValueEnum, Debug, Clone, Hash)]
-enum InputMethod {
-    /// interprets the input byte per byte including the \n
-    Normal,
-    /// only takes the first byte from each line
-    FirstCharOnly,
-    /// interprets the line as a number represented number (must be between 0 and 255 included)
-    ByteAsNumber,
-}
-
-#[derive(clap::ValueEnum, Debug, Clone, Hash)]
-enum OutputMethod {
-    /// outputs each byte as ascii
-    Normal,
-    /// outputs each byte as a number
-    ByteAsNumber,
-}
 
 fn main() {
     let args = Args::parse();
