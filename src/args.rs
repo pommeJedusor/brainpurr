@@ -32,9 +32,9 @@ pub struct Args {
     #[arg(long)]
     pub compile: bool,
 
-    /// the length of the array (only works for compiler)
-    #[arg(long, default_value_t=67000)]
-    pub max_array_size: u32,
+    /// the length of the array, by default unlimited for the interpreter and 67_000 for the compiler
+    #[arg(long)]
+    pub max_array_size: Option<u32>,
 
     /// arguments to pass to gcc when compiling the code from c to binary
     #[arg(long, allow_hyphen_values = true)]
@@ -78,12 +78,14 @@ pub trait InterpreterArgs{
     fn get_input_method(&self) -> &InputMethod;
     fn get_output_method(&self) -> &OutputMethod;
     fn get_newline_zero(&self) -> bool;
+    fn get_max_array_size(&self) -> Option<u32>;
 }
 
 impl InterpreterArgs for Args {
     fn get_input_method(&self) -> &InputMethod { &self.input }
     fn get_output_method(&self) -> &OutputMethod { &self.output }
     fn get_newline_zero(&self) -> bool { self.newline_zero }
+    fn get_max_array_size(&self) -> Option<u32> { self.max_array_size }
 }
 
 pub trait CompilerArgs{
@@ -98,6 +100,6 @@ impl CompilerArgs for Args {
     fn get_input_method(&self) -> &InputMethod { &self.input }
     fn get_output_method(&self) -> &OutputMethod { &self.output }
     fn get_newline_zero(&self) -> bool { self.newline_zero }
-    fn get_max_array_size(&self) -> u32 { self.max_array_size }
+    fn get_max_array_size(&self) -> u32 { self.max_array_size.unwrap_or(67000) }
     fn get_gcc_args(&self) -> Option<String> { self.gcc_args.clone() }
 }

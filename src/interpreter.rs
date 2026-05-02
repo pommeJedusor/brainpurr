@@ -1,4 +1,4 @@
-use std::io::{self, Write};
+use std::{io::{self, Write}, process};
 
 use crate::{InputMethod, OutputMethod, args::InterpreterArgs, parser::Instruction};
 
@@ -13,15 +13,18 @@ fn useless_map(char: u8) -> u8{
     char
 }
 
-// TODO implement max_array_size
 pub fn interpreter<T: InterpreterArgs>(instructions: Vec<Instruction>, args: &T, mut writer: impl std::io::Write) -> Vec<u8> {
     let input_method = args.get_input_method();
     let output_method = args.get_output_method();
     let newline_zero = args.get_newline_zero();
+    let max_array_size = args.get_max_array_size();
     
     let newline_zero_func = if newline_zero {newline_zero_map} else {useless_map};
 
     let mut array: Vec<u8> = vec![0];
+    if let Some(max_array_size) = max_array_size {
+        array = vec![0; max_array_size as usize];
+    }
     let mut array_pointer = 0;
     let mut instruction_pointer = 0;
     let mut input_queue = vec![];
@@ -29,8 +32,11 @@ pub fn interpreter<T: InterpreterArgs>(instructions: Vec<Instruction>, args: &T,
     while instruction_pointer < instructions.len(){
         match instructions[instruction_pointer] {
             Instruction::PointerIncrement => {
-                if array.len() == array_pointer + 1 {
+                if array.len() == array_pointer + 1 && max_array_size.is_none() {
                     array.push(0);
+                }else if array.len() == array_pointer + 1 {
+                    eprintln!("pointer overflow");
+                    process::exit(1);
                 }
                 array_pointer += 1
             },
@@ -90,60 +96,62 @@ mod tests {
         input: InputMethod,
         output: OutputMethod,
         newline_zero: bool,
+        max_array_size: Option<u32>,
     }
 
     impl InterpreterArgs for Args {
         fn get_input_method(&self) -> &InputMethod { &self.input }
         fn get_output_method(&self) -> &OutputMethod { &self.output }
         fn get_newline_zero(&self) -> bool { self.newline_zero }
+        fn get_max_array_size(&self) -> Option<u32> { self.max_array_size }
     }
 
     impl Args {
-        fn new(input: InputMethod, output: OutputMethod, newline_zero: bool) -> Self{
-            Self { input, output, newline_zero }
+        fn new(input: InputMethod, output: OutputMethod, newline_zero: bool, max_array_size: Option<u32>) -> Self{
+            Self { input, output, newline_zero, max_array_size }
         }
     }
 
     #[test]
     fn increment(){
-        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false);
+        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
         assert_eq!(interpreter(vec![Instruction::ByteIncrement], &args, &mut vec![]), vec![1]);
     }
 
     #[test]
     fn increment_overflow(){
-        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false);
+        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
         assert_eq!(interpreter(vec![Instruction::ByteIncrement; 256], &args, &mut vec![]), vec![0]);
     }
 
     #[test]
     fn decrement(){
-        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false);
+        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
         assert_eq!(interpreter(vec![Instruction::ByteIncrement, Instruction::ByteDecrement], &args, &mut vec![]), vec![0]);
     }
 
     #[test]
     fn decrement_overflow(){
-        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false);
+        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
         assert_eq!(interpreter(vec![Instruction::ByteDecrement; 256], &args, &mut vec![]), vec![0]);
     }
 
     #[test]
     fn pointer_increment(){
-        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false);
+        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
         assert_eq!(interpreter(vec![Instruction::PointerIncrement, Instruction::ByteIncrement], &args, &mut vec![]), vec![0, 1]);
     }
 
     #[test]
     fn pointer_decrement(){
-        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false);
+        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
         assert_eq!(interpreter(vec![Instruction::PointerIncrement, Instruction::PointerDecrement, Instruction::ByteIncrement], &args, &mut vec![]), vec![1, 0]);
     }
 
     #[test]
     #[should_panic]
     fn pointer_decrement_overflow(){
-        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false);
+        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
         interpreter(vec![Instruction::PointerDecrement], &args, &mut vec![]);
     }
 
@@ -185,7 +193,7 @@ mod tests {
         let mut instructions = vec![Instruction::ByteIncrement; 67];
         instructions.push(Instruction::ByteOutput);
         let mut result = vec![];
-        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false);
+        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
         interpreter(instructions, &args, &mut result);
         assert_eq!(result, vec![67])
     }
@@ -195,7 +203,7 @@ mod tests {
         let mut instructions = vec![Instruction::ByteIncrement; 67];
         instructions.push(Instruction::ByteOutput);
         let mut result = vec![];
-        let args = Args::new(InputMethod::Normal, OutputMethod::ByteAsNumber, false);
+        let args = Args::new(InputMethod::Normal, OutputMethod::ByteAsNumber, false, None);
         interpreter(instructions, &args, &mut result);
         assert_eq!(result, vec!['6' as u8, '7' as u8, '\n' as u8])
     }
@@ -223,7 +231,7 @@ mod tests {
             Instruction::CloseLoop(7),
         ];
         instructions.push(Instruction::ByteOutput);
-        let args = Args::new(InputMethod::Normal, OutputMethod::ByteAsNumber, false);
+        let args = Args::new(InputMethod::Normal, OutputMethod::ByteAsNumber, false, None);
         let result = interpreter(instructions, &args, &mut vec![]);
         assert_eq!(result, vec![0, 42])
     }
@@ -252,5 +260,25 @@ mod tests {
             .assert()
             .code(0)
             .stdout("\n\0\n\0");
+    }
+
+    #[test]
+    fn max_array_size_border(){
+        let mut cmd = Command::cargo_bin("brainpurr").unwrap();
+        cmd.args(&["./examples/tests/max_array_size_border.bp", "--max-array-size", "10"])
+            .write_stdin("")
+            .assert()
+            .code(0)
+            .stdout("");
+    }
+    #[test]
+    fn max_array_size_overflow(){
+        let mut cmd = Command::cargo_bin("brainpurr").unwrap();
+        cmd.args(&["./examples/tests/max_array_size_border.bp", "--max-array-size", "9"])
+            .write_stdin("")
+            .assert()
+            .stdout("")
+            .code(1)
+            .failure();
     }
 }
