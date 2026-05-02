@@ -50,7 +50,8 @@ pub struct Args {
     #[arg(long, default_value_t=OutputMethod::Normal)]
     pub output: OutputMethod,
 
-    /// replaces '\n' character ascii value (10) by 0 for input and output
+    /// replaces '\n' character ascii value (10) by 0 for input and output and the \0 character
+    /// value by 10
     #[arg(long)]
     pub newline_zero: bool,
 }

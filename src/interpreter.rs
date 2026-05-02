@@ -2,9 +2,23 @@ use std::io::{self, Write};
 
 use crate::{InputMethod, OutputMethod, args::InterpreterArgs, parser::Instruction};
 
+fn newline_zero_map(char: u8) -> u8{
+    match char{
+        0 => 10,
+        10 => 0,
+        _ => char,
+    }
+}
+fn useless_map(char: u8) -> u8{
+    char
+}
+
 pub fn interpreter<T: InterpreterArgs>(instructions: Vec<Instruction>, args: &T, mut writer: impl std::io::Write) -> Vec<u8> {
     let input_method = args.get_input_method();
     let output_method = args.get_output_method();
+    let newline_zero = args.get_newline_zero();
+    
+    let newline_zero_func = if newline_zero {newline_zero_map} else {useless_map};
 
     let mut array: Vec<u8> = vec![0];
     let mut array_pointer = 0;
@@ -28,32 +42,32 @@ pub fn interpreter<T: InterpreterArgs>(instructions: Vec<Instruction>, args: &T,
                         while input_queue.len() == 0 {
                             let mut input = String::new();
                             io::stdin().read_line(&mut input).expect("error: unable to read user input");
-                            input_queue = input.into_bytes();
-                            input_queue.reverse();
+                            input_queue = input.into_bytes().iter().rev().map(|x| newline_zero_func(*x)).collect();
                         }
                         array[array_pointer] = input_queue.pop().unwrap();
                     },
                     InputMethod::FirstCharOnly => {
                         let mut input = String::new();
                         io::stdin().read_line(&mut input).expect("error: unable to read user input");
-                        let input = input.chars().next().unwrap() as u8;
+                        let input = input.chars().map(|x| newline_zero_func(x as u8)).next().unwrap() as u8;
                         array[array_pointer] = input;
                     },
                     InputMethod::ByteAsNumber => {
                         let mut input = String::new();
                         io::stdin().read_line(&mut input).expect("error: unable to read user input");
                         let input = input[0..input.len() - 1].parse().expect("error: unable to parse user input into a single byte");
+                        let input = newline_zero_func(input);
                         array[array_pointer] = input;
                     },
                 };
             },
             Instruction::ByteOutput => match output_method{
                 OutputMethod::Normal => {
-                    let _ = write!(writer, "{}", array[array_pointer] as char);
+                    let _ = write!(writer, "{}", newline_zero_func(array[array_pointer]) as char);
                     io::stdout().flush().unwrap();
                 },
                 OutputMethod::ByteAsNumber => {
-                    let _ = writeln!(writer, "{}", array[array_pointer]);
+                    let _ = writeln!(writer, "{}", newline_zero_func(array[array_pointer]));
                 },
             },
             Instruction::OpenLoop(close_loop_index) => if array[array_pointer] == 0{instruction_pointer = close_loop_index},
@@ -211,5 +225,31 @@ mod tests {
         let args = Args::new(InputMethod::Normal, OutputMethod::ByteAsNumber, false);
         let result = interpreter(instructions, &args, &mut vec![]);
         assert_eq!(result, vec![0, 42])
+    }
+
+    #[test]
+    fn newline_zero(){
+        // normal mode for both
+        let mut cmd = Command::cargo_bin("brainpurr").unwrap();
+        cmd.args(&["./examples/tests/newline_zero.bp", "--newline-zero"])
+            .write_stdin("\n\0")
+            .assert()
+            .code(0)
+            .stdout("\n\0\n\0");
+        // byte-as-number for both
+        let mut cmd = Command::cargo_bin("brainpurr").unwrap();
+        cmd
+            .args(&["./examples/tests/newline_zero.bp", "--newline-zero", "--input", "byte-as-number", "--output", "byte-as-number"])
+            .write_stdin("10\n0\n")
+            .assert()
+            .code(0)
+            .stdout("10\n0\n10\n0\n");
+        // first-char-only mode for input
+        let mut cmd = Command::cargo_bin("brainpurr").unwrap();
+        cmd.args(&["./examples/tests/newline_zero.bp", "--newline-zero"])
+            .write_stdin("\n\0\n")
+            .assert()
+            .code(0)
+            .stdout("\n\0\n\0");
     }
 }
