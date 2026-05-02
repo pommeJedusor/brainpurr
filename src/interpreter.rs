@@ -247,7 +247,7 @@ mod tests {
             .stdout("10\n0\n10\n0\n");
         // first-char-only mode for input
         let mut cmd = Command::cargo_bin("brainpurr").unwrap();
-        cmd.args(&["./examples/tests/newline_zero.bp", "--newline-zero"])
+        cmd.args(&["./examples/tests/newline_zero.bp", "--newline-zero", "--input", "first-char-only"])
             .write_stdin("\n\0\n")
             .assert()
             .code(0)
