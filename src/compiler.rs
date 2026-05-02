@@ -2,10 +2,46 @@ use std::{fs::{self, File}, hash::{DefaultHasher, Hash, Hasher}, io::Write, ops:
 
 use crate::{InputMethod, OutputMethod, args::CompilerArgs, parser::Instruction};
 
+struct Instructions{
+    pointer_increment: String,
+    pointer_decrement: String,
+    byte_increment: String,
+    byte_decrement: String,
+    byte_input: String,
+    byte_output: String,
+    open_loop: String,
+    close_loop: String,
+}
+
+impl Instructions{
+    fn get_c_instructions<T: CompilerArgs>(args: &T) -> Self{
+        let input_method = args.get_input_method();
+        let output_method = args.get_output_method();
+        let newline_zero = args.get_newline_zero();
+        let newline_zero_instruction = if newline_zero {"if (array[pointer] == 10){array[pointer] = 0;}else if (array[pointer] == 0){array[pointer] = 10;}"} else {""};
+
+        let pointer_increment = "if (pointer >= ARRAY_LENGTH - 1){fprintf(stderr, \"pointer overflow\\n\");return 1;}pointer++;".to_string();
+        let pointer_decrement = "if (pointer == 0){fprintf(stderr, \"pointer underflow\");return 1;}pointer--;".to_string();
+        let byte_increment = "array[pointer]++;".to_string();
+        let byte_decrement = "array[pointer]--;".to_string();
+        let byte_input = match input_method{
+                InputMethod::Normal => format!("scanf(\"%c\", &array[pointer]);{}", newline_zero_instruction),
+                InputMethod::FirstCharOnly => format!("fgets(input, 100, stdin);array[pointer] = input[0];{}", newline_zero_instruction),
+                InputMethod::ByteAsNumber => format!("scanf(\"%d\", &array[pointer]);{}", newline_zero_instruction),
+            };
+        let byte_output = match output_method {
+            OutputMethod::Normal => format!("{}printf(\"%c\", array[pointer]);{}", newline_zero_instruction, newline_zero_instruction),
+            OutputMethod::ByteAsNumber => format!("{}printf(\"%d\\n\", array[pointer]);{}", newline_zero_instruction, newline_zero_instruction),
+        };
+        let open_loop = "while (array[pointer] != 0){".to_string();
+        let close_loop = "}".to_string();
+        Self { pointer_increment, pointer_decrement, byte_increment, byte_decrement, byte_input, byte_output, open_loop, close_loop }
+    }
+}
+
 pub fn compile_to_c<T: CompilerArgs>(instructions: &Vec<Instruction>, args: &T) -> String {
-    let input_method = args.get_input_method();
-    let output_method = args.get_output_method();
     let max_array_size = args.get_max_array_size();
+    let c_instructions = Instructions::get_c_instructions(args);
 
     let c_file = "#include <stdio.h>\n".to_string();
     let c_file = c_file.add(&format!("const unsigned long ARRAY_LENGTH = {};\n", max_array_size));
@@ -13,22 +49,15 @@ pub fn compile_to_c<T: CompilerArgs>(instructions: &Vec<Instruction>, args: &T) 
     let c_file = c_file.add("int main(){\nchar array[ARRAY_LENGTH];\nchar input[100];\nfor (int i=0;i<ARRAY_LENGTH;i++){\narray[i] = 0;\n}\nunsigned long pointer = 0;\n");
 
     let c_file = c_file.add(&instructions.iter().map(|x| match x{
-        Instruction::PointerIncrement => "if (pointer >= ARRAY_LENGTH - 1){fprintf(stderr, \"pointer overflow\\n\");return 1;}pointer++;",
-        Instruction::PointerDecrement => "if (pointer == 0){fprintf(stderr, \"pointer underflow\");return 1;}pointer--;",
-        Instruction::ByteIncrement => "array[pointer]++;",
-        Instruction::ByteDecrement => "array[pointer]--;",
-        Instruction::ByteInput => match input_method{
-            InputMethod::Normal => "scanf(\"%c\", &array[pointer]);",
-            InputMethod::FirstCharOnly => "fgets(input, 100, stdin);array[pointer] = input[0];",
-            InputMethod::ByteAsNumber => "scanf(\"%d\", &array[pointer]);",
-        },
-        Instruction::ByteOutput => match output_method {
-            OutputMethod::Normal => "printf(\"%c\", array[pointer]);",
-            OutputMethod::ByteAsNumber => "printf(\"%d\\n\", array[pointer]);",
-        }
-        Instruction::OpenLoop(_) => "while (array[pointer] != 0){",
-        Instruction::CloseLoop(_) => "}",
-    }).collect::<Vec<&str>>().join("\n"));
+        Instruction::PointerIncrement => &c_instructions.pointer_increment,
+        Instruction::PointerDecrement => &c_instructions.pointer_decrement,
+        Instruction::ByteIncrement => &c_instructions.byte_increment,
+        Instruction::ByteDecrement => &c_instructions.byte_decrement,
+        Instruction::ByteInput => &c_instructions.byte_input,
+        Instruction::ByteOutput => &c_instructions.byte_output,
+        Instruction::OpenLoop(_) => &c_instructions.open_loop,
+        Instruction::CloseLoop(_) => &c_instructions.close_loop,
+    }).map(|x| x as &str).collect::<Vec<&str>>().join("\n"));
 
     let c_file = c_file.add("return 0;}");
 
@@ -80,13 +109,6 @@ mod tests {
             .code(0)
             .stdout(predicate::eq(expected_output.to_string().into_bytes()));
         fs::remove_file(exe_name).unwrap();
-    }
-    fn expect_compiler_failure(args: &Vec<&str>){
-        let mut cmd = Command::cargo_bin("brainpurr").unwrap();
-        cmd
-            .args(args)
-            .assert()
-            .failure();
     }
     fn expect_binary_failure(exe_name: &str, args: &Vec<&str>, stdin: &str){
         let mut cmd = Command::cargo_bin("brainpurr").unwrap();
@@ -185,5 +207,15 @@ mod tests {
     #[test]
     fn array_empty(){
         expect_binary_failure("./array_empty.out", &vec!["./examples/tests/array_empty.bp", "--compile", "--gcc-args", "-o array_empty.out", "--max-array-size", "1000000"], "");
+    }
+
+    #[test]
+    fn newline_zero(){
+        //// normal mode for both
+        expect_success("./newline_zero_normal_mode.out", &vec!["./examples/tests/newline_zero.bp", "--compile", "--gcc-args", "-o newline_zero_normal_mode.out", "--newline-zero", "--input", "normal", "--output", "normal"], "\n\0", "\n\0\n\0");
+        //// byte-as-number for both
+        expect_success("./newline_zero_byte_as_number.out", &vec!["./examples/tests/newline_zero.bp", "--compile", "--gcc-args", "-o newline_zero_byte_as_number.out", "--newline-zero", "--input", "byte-as-number", "--output", "byte-as-number"], "10\n0\n", "10\n0\n10\n0\n");
+        //// first-char-only mode for input
+        expect_success("./newline_zero_first_char_only.out", &vec!["./examples/tests/newline_zero.bp", "--compile", "--gcc-args", "-o newline_zero_first_char_only.out", "--newline-zero", "--input", "first-char-only"], "\n\0\n", "\n\0\n\0");
     }
 }
