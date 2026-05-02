@@ -18,20 +18,29 @@ impl Instructions{
         let input_method = args.get_input_method();
         let output_method = args.get_output_method();
         let newline_zero = args.get_newline_zero();
-        let newline_zero_instruction = if newline_zero {"if (array[pointer] == 10){array[pointer] = 0;}else if (array[pointer] == 0){array[pointer] = 10;}"} else {""};
+        let newline_zero_input_instruction = match newline_zero{
+            true => "if (array[pointer] == 10){array[pointer] = 0;}else if (array[pointer] == 0){array[pointer] = 10;}",
+            false => "",
+        };
 
         let pointer_increment = "if (pointer >= ARRAY_LENGTH - 1){fprintf(stderr, \"pointer overflow\\n\");return 1;}pointer++;".to_string();
         let pointer_decrement = "if (pointer == 0){fprintf(stderr, \"pointer underflow\");return 1;}pointer--;".to_string();
         let byte_increment = "array[pointer]++;".to_string();
         let byte_decrement = "array[pointer]--;".to_string();
         let byte_input = match input_method{
-                InputMethod::Normal => format!("scanf(\"%c\", &array[pointer]);{}", newline_zero_instruction),
-                InputMethod::FirstCharOnly => format!("fgets(input, 100, stdin);array[pointer] = input[0];{}", newline_zero_instruction),
-                InputMethod::ByteAsNumber => format!("scanf(\"%d\", &array[pointer]);{}", newline_zero_instruction),
+                InputMethod::Normal => format!("scanf(\"%c\", &array[pointer]);{}", newline_zero_input_instruction),
+                InputMethod::FirstCharOnly => format!("fgets(input, 100, stdin);array[pointer] = input[0];{}", newline_zero_input_instruction),
+                InputMethod::ByteAsNumber => format!("scanf(\"%d\", &array[pointer]);{}", newline_zero_input_instruction),
             };
         let byte_output = match output_method {
-            OutputMethod::Normal => format!("{}printf(\"%c\", array[pointer]);{}", newline_zero_instruction, newline_zero_instruction),
-            OutputMethod::ByteAsNumber => format!("{}printf(\"%d\\n\", array[pointer]);{}", newline_zero_instruction, newline_zero_instruction),
+            OutputMethod::Normal => match newline_zero {
+                true => "if (array[pointer] == 10){printf(\"%c\", 0);}else if (array[pointer] == 0){printf(\"%c\", 10);}else {printf(\"%c\", array[pointer]);}".to_string(),
+                false => "printf(\"%c\", array[pointer]);".to_string(),
+            },
+            OutputMethod::ByteAsNumber =>  match newline_zero {
+                true => "if (array[pointer] == 10){printf(\"%d\\n\", 0);}else if (array[pointer] == 0){printf(\"%d\\n\", 10);}else {printf(\"%d\\n\", array[pointer]);}".to_string(),
+                false => "printf(\"%d\\n\", array[pointer]);".to_string(),
+            }
         };
         let open_loop = "while (array[pointer] != 0){".to_string();
         let close_loop = "}".to_string();
