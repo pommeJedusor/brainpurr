@@ -29,7 +29,7 @@ impl Instructions{
         let byte_decrement = "array[pointer]--;".to_string();
         let byte_input = match input_method{
                 InputMethod::Normal => format!("scanf(\"%c\", &array[pointer]);{}", newline_zero_input_instruction),
-                InputMethod::FirstCharOnly => format!("fgets(input, 100, stdin);array[pointer] = input[0];{}", newline_zero_input_instruction),
+                InputMethod::FirstCharOnly => format!("while (true){{fgets(input, INPUT_LENGTH, stdin);if (!is_first_char_found){{first_char = input[0];is_first_char_found = true;}}if (input[0] == 10){{break;}}}}array[pointer] = first_char;is_first_char_found = false;{}", newline_zero_input_instruction),
                 InputMethod::ByteAsNumber => format!("scanf(\"%d\", &array[pointer]);{}", newline_zero_input_instruction),
             };
         let byte_output = match output_method {
@@ -53,9 +53,8 @@ pub fn compile_to_c<T: CompilerArgs>(instructions: &Vec<Instruction>, args: &T) 
     let c_instructions = Instructions::get_c_instructions(args);
 
     let c_file = "#include <stdio.h>\n".to_string();
-    let c_file = c_file.add(&format!("const unsigned long ARRAY_LENGTH = {};\n", max_array_size));
-    // TODO make the input array size customizable
-    let c_file = c_file.add("int main(){\nchar array[ARRAY_LENGTH];\nchar input[100];\nfor (int i=0;i<ARRAY_LENGTH;i++){\narray[i] = 0;\n}\nunsigned long pointer = 0;\n");
+    let c_file = c_file.add(&format!("const unsigned long ARRAY_LENGTH = {};\nconst int INPUT_LENGTH = 2;\n", max_array_size));
+    let c_file = c_file.add("int main(){\nchar array[ARRAY_LENGTH];\nchar input[INPUT_LENGTH];char first_char = 0;\nbool is_first_char_found;\nfor (int i=0;i<ARRAY_LENGTH;i++){\narray[i] = 0;\n}\nunsigned long pointer = 0;\n");
 
     let c_file = c_file.add(&instructions.iter().map(|x| match x{
         Instruction::PointerIncrement => &c_instructions.pointer_increment,
@@ -226,5 +225,10 @@ mod tests {
         expect_success("./newline_zero_byte_as_number.out", &vec!["./examples/tests/newline_zero.bp", "--compile", "--gcc-args", "-o newline_zero_byte_as_number.out", "--newline-zero", "--input", "byte-as-number", "--output", "byte-as-number"], "10\n0\n", "10\n0\n10\n0\n");
         //// first-char-only mode for input
         expect_success("./newline_zero_first_char_only.out", &vec!["./examples/tests/newline_zero.bp", "--compile", "--gcc-args", "-o newline_zero_first_char_only.out", "--newline-zero", "--input", "first-char-only"], "\n\0\n", "\n\0\n\0");
+    }
+
+    #[test]
+    fn input_length_overflow(){
+        expect_success("./input_length_overflow.out", &vec!["./examples/echo.bp", "--input", "first-char-only", "--compile", "--gcc-args", "-o input_length_overflow.out"], "ppppppppp\no\n\0\n\n", "po\0\n");
     }
 }
