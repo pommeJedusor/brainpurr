@@ -16,12 +16,6 @@ fn main() {
         false => parser::parse_file(path),
         true => bf_parser::parse_file(path),
     };
-    let input_method = &args.input;
-    let output_method = &args.output;
-    let gcc_args = args.gcc_args.clone().unwrap_or("".to_string());
-    // TODO implement max_array_size for interpreter
-    let max_array_size = args.max_array_size;
-
     if args.to_brainpurr {
         return println!("{}", parser::unparse(instructions));
     }
@@ -29,11 +23,10 @@ fn main() {
         return println!("{}", bf_parser::unparse(instructions));
     }
     if args.to_c {
-        return println!("{}", compiler::compile_to_c(&instructions, Some(max_array_size), &input_method, &output_method));
+        return println!("{}", compiler::compile_to_c(&instructions, &args));
     }
     if args.compile {
-        let gcc_args = gcc_args.split(" ").filter(|x| x != &"").collect::<Vec<&str>>();
-        return compiler::compile_to_file(&instructions, Some(max_array_size), &input_method, &output_method, &gcc_args);
+        return compiler::compile_to_file(&instructions, &args);
     }
 
     let array = interpreter(instructions, &args, &mut std::io::stdout());

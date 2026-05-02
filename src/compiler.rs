@@ -1,9 +1,11 @@
 use std::{fs::{self, File}, hash::{DefaultHasher, Hash, Hasher}, io::Write, ops::Add, process::{Command}};
 
-use crate::{InputMethod, OutputMethod, parser::Instruction};
+use crate::{InputMethod, OutputMethod, args::CompilerArgs, parser::Instruction};
 
-pub fn compile_to_c(instructions: &Vec<Instruction>, max_array_size: Option<u32>, input_method: &InputMethod, output_method: &OutputMethod) -> String {
-    let max_array_size = max_array_size.unwrap_or(67000);
+pub fn compile_to_c<T: CompilerArgs>(instructions: &Vec<Instruction>, args: &T) -> String {
+    let input_method = args.get_input_method();
+    let output_method = args.get_output_method();
+    let max_array_size = args.get_max_array_size();
 
     let c_file = "#include <stdio.h>\n".to_string();
     let c_file = c_file.add(&format!("const unsigned long ARRAY_LENGTH = {};\n", max_array_size));
@@ -33,16 +35,21 @@ pub fn compile_to_c(instructions: &Vec<Instruction>, max_array_size: Option<u32>
     c_file
 }
 
-pub fn compile_to_file(instructions: &Vec<Instruction>, max_array_size: Option<u32>, input_method: &InputMethod, output_method: &OutputMethod, gcc_args: &Vec<&str>){
-    let c_code = compile_to_c(instructions, max_array_size, input_method, output_method);
+pub fn compile_to_file<T: CompilerArgs>(instructions: &Vec<Instruction>, args: &T){
+    let max_array_size = args.get_max_array_size();
+    let input_method = args.get_input_method();
+    let output_method = args.get_output_method();
+    let gcc_args = args.get_gcc_args().unwrap_or("".to_string());
+    let gcc_args = gcc_args.split(" ").filter(|x| x != &"").collect::<Vec<&str>>();
+
+    let c_code = compile_to_c(instructions, args);
 
     let mut hasher = DefaultHasher::new();
-    (instructions, max_array_size, input_method, output_method, gcc_args).hash(&mut hasher);
+    (instructions, max_array_size, input_method, output_method, &gcc_args).hash(&mut hasher);
     let c_file_name = format!("temp-{}.c", hasher.finish());
 
     let mut gcc_args = gcc_args.clone();
     gcc_args.insert(0, &c_file_name);
-    println!("{:?}", gcc_args);
 
     let mut file = File::create(&c_file_name).expect("failed to create temporary file for compiling");
     write!(file, "{}", c_code).unwrap();

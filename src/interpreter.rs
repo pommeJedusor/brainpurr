@@ -13,6 +13,7 @@ fn useless_map(char: u8) -> u8{
     char
 }
 
+// TODO implement max_array_size
 pub fn interpreter<T: InterpreterArgs>(instructions: Vec<Instruction>, args: &T, mut writer: impl std::io::Write) -> Vec<u8> {
     let input_method = args.get_input_method();
     let output_method = args.get_output_method();

@@ -85,3 +85,19 @@ impl InterpreterArgs for Args {
     fn get_output_method(&self) -> &OutputMethod { &self.output }
     fn get_newline_zero(&self) -> bool { self.newline_zero }
 }
+
+pub trait CompilerArgs{
+    fn get_input_method(&self) -> &InputMethod;
+    fn get_output_method(&self) -> &OutputMethod;
+    fn get_newline_zero(&self) -> bool;
+    fn get_max_array_size(&self) -> u32;
+    fn get_gcc_args(&self) -> Option<String>;
+}
+
+impl CompilerArgs for Args {
+    fn get_input_method(&self) -> &InputMethod { &self.input }
+    fn get_output_method(&self) -> &OutputMethod { &self.output }
+    fn get_newline_zero(&self) -> bool { self.newline_zero }
+    fn get_max_array_size(&self) -> u32 { self.max_array_size }
+    fn get_gcc_args(&self) -> Option<String> { self.gcc_args.clone() }
+}
