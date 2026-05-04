@@ -17,10 +17,10 @@ pub fn parse(program: &str) -> Vec<Instruction> {
     let mut open_brackets = vec![];
     let mut close_brackets = vec![];
     let mut instructions = instructions_words.enumerate().map(|(index, instruction_word)| match instruction_word {
-        '>' => Instruction::PointerIncrement,
-        '<' => Instruction::PointerDecrement,
-        '+' => Instruction::ByteIncrement,
-        '-' => Instruction::ByteDecrement,
+        '>' => Instruction::PointerIncrement(1),
+        '<' => Instruction::PointerDecrement(1),
+        '+' => Instruction::ByteIncrement(1),
+        '-' => Instruction::ByteDecrement(1),
         '.' => Instruction::ByteOutput,
         ',' => Instruction::ByteInput,
         '[' => {
@@ -46,14 +46,14 @@ pub fn parse(program: &str) -> Vec<Instruction> {
 
 pub fn unparse(instructions: Vec<Instruction>) -> String{
     instructions.iter().map(|instruction| match instruction{
-        Instruction::PointerIncrement => '>',
-        Instruction::PointerDecrement => '<',
-        Instruction::ByteIncrement => '+',
-        Instruction::ByteDecrement => '-',
-        Instruction::ByteOutput => '.',
-        Instruction::ByteInput => ',',
-        Instruction::OpenLoop(_) => '[',
-        Instruction::CloseLoop(_) => ']',
+        Instruction::PointerIncrement(x) => '>'.to_string().repeat(*x),
+        Instruction::PointerDecrement(x) => '<'.to_string().repeat(*x),
+        Instruction::ByteIncrement(x) => '+'.to_string().repeat(*x),
+        Instruction::ByteDecrement(x) => '-'.to_string().repeat(*x),
+        Instruction::ByteOutput => '.'.to_string(),
+        Instruction::ByteInput => ','.to_string(),
+        Instruction::OpenLoop(_) => '['.to_string(),
+        Instruction::CloseLoop(_) => ']'.to_string(),
     }).collect::<String>()
 }
 
@@ -63,12 +63,12 @@ mod tests {
 
     #[test]
     fn parsing(){
-        assert_eq!(parse("><+-.,[]"), vec![Instruction::PointerIncrement, Instruction::PointerDecrement, Instruction::ByteIncrement, Instruction::ByteDecrement, Instruction::ByteOutput, Instruction::ByteInput, Instruction::OpenLoop(7), Instruction::CloseLoop(6)]);
+        assert_eq!(parse("><+-.,[]"), vec![Instruction::PointerIncrement(1), Instruction::PointerDecrement(1), Instruction::ByteIncrement(1), Instruction::ByteDecrement(1), Instruction::ByteOutput, Instruction::ByteInput, Instruction::OpenLoop(7), Instruction::CloseLoop(6)]);
     }
 
     #[test]
     fn unparsing(){
-        assert_eq!(unparse(vec![Instruction::PointerIncrement, Instruction::PointerDecrement, Instruction::ByteIncrement, Instruction::ByteDecrement, Instruction::ByteOutput, Instruction::ByteInput, Instruction::OpenLoop(7), Instruction::CloseLoop(6)]), "><+-.,[]");
+        assert_eq!(unparse(vec![Instruction::PointerIncrement(1), Instruction::PointerDecrement(1), Instruction::ByteIncrement(1), Instruction::ByteDecrement(1), Instruction::ByteOutput, Instruction::ByteInput, Instruction::OpenLoop(7), Instruction::CloseLoop(6)]), "><+-.,[]");
     }
 
     #[test]

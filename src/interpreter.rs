@@ -31,18 +31,18 @@ pub fn interpreter<T: InterpreterArgs>(instructions: Vec<Instruction>, args: &T,
 
     while instruction_pointer < instructions.len(){
         match instructions[instruction_pointer] {
-            Instruction::PointerIncrement => {
-                if array.len() == array_pointer + 1 && max_array_size.is_none() {
+            Instruction::PointerIncrement(x) => {
+                if array.len() == array_pointer + x && max_array_size.is_none() {
                     array.push(0);
-                }else if array.len() == array_pointer + 1 {
+                }else if array.len() == array_pointer + x {
                     eprintln!("pointer overflow");
                     process::exit(1);
                 }
-                array_pointer += 1
+                array_pointer += x
             },
-            Instruction::PointerDecrement => array_pointer -= 1,
-            Instruction::ByteIncrement => array[array_pointer] = array[array_pointer].wrapping_add(1),
-            Instruction::ByteDecrement => array[array_pointer] = array[array_pointer].wrapping_sub(1),
+            Instruction::PointerDecrement(x) => array_pointer -= x,
+            Instruction::ByteIncrement(x) => array[array_pointer] = array[array_pointer].wrapping_add((x % 256) as u8),
+            Instruction::ByteDecrement(x) => array[array_pointer] = array[array_pointer].wrapping_sub((x % 256) as u8),
             Instruction::ByteInput => {
                 match input_method {
                     InputMethod::Normal => {
@@ -115,44 +115,54 @@ mod tests {
     #[test]
     fn increment(){
         let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
-        assert_eq!(interpreter(vec![Instruction::ByteIncrement], &args, &mut vec![]), vec![1]);
+        assert_eq!(interpreter(vec![Instruction::ByteIncrement(1)], &args, &mut vec![]), vec![1]);
     }
 
     #[test]
+    fn byte_overflow(){
+        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
+        assert_eq!(interpreter(vec![Instruction::ByteIncrement(1); 256], &args, &mut vec![]), vec![0]);
+    }
+    #[test]
     fn increment_overflow(){
         let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
-        assert_eq!(interpreter(vec![Instruction::ByteIncrement; 256], &args, &mut vec![]), vec![0]);
+        assert_eq!(interpreter(vec![Instruction::ByteIncrement(256)], &args, &mut vec![]), vec![0]);
     }
 
     #[test]
     fn decrement(){
         let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
-        assert_eq!(interpreter(vec![Instruction::ByteIncrement, Instruction::ByteDecrement], &args, &mut vec![]), vec![0]);
+        assert_eq!(interpreter(vec![Instruction::ByteIncrement(1), Instruction::ByteDecrement(1)], &args, &mut vec![]), vec![0]);
     }
 
     #[test]
+    fn byte_underflow(){
+        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
+        assert_eq!(interpreter(vec![Instruction::ByteDecrement(1); 256], &args, &mut vec![]), vec![0]);
+    }
+    #[test]
     fn decrement_overflow(){
         let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
-        assert_eq!(interpreter(vec![Instruction::ByteDecrement; 256], &args, &mut vec![]), vec![0]);
+        assert_eq!(interpreter(vec![Instruction::ByteDecrement(256)], &args, &mut vec![]), vec![0]);
     }
 
     #[test]
     fn pointer_increment(){
         let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
-        assert_eq!(interpreter(vec![Instruction::PointerIncrement, Instruction::ByteIncrement], &args, &mut vec![]), vec![0, 1]);
+        assert_eq!(interpreter(vec![Instruction::PointerIncrement(1), Instruction::ByteIncrement(1)], &args, &mut vec![]), vec![0, 1]);
     }
 
     #[test]
     fn pointer_decrement(){
         let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
-        assert_eq!(interpreter(vec![Instruction::PointerIncrement, Instruction::PointerDecrement, Instruction::ByteIncrement], &args, &mut vec![]), vec![1, 0]);
+        assert_eq!(interpreter(vec![Instruction::PointerIncrement(1), Instruction::PointerDecrement(1), Instruction::ByteIncrement(1)], &args, &mut vec![]), vec![1, 0]);
     }
 
     #[test]
     #[should_panic]
-    fn pointer_decrement_overflow(){
+    fn pointer_underflow(){
         let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
-        interpreter(vec![Instruction::PointerDecrement], &args, &mut vec![]);
+        interpreter(vec![Instruction::PointerDecrement(1)], &args, &mut vec![]);
     }
 
     #[test]
@@ -190,8 +200,7 @@ mod tests {
 
     #[test]
     fn output_normal_mode(){
-        let mut instructions = vec![Instruction::ByteIncrement; 67];
-        instructions.push(Instruction::ByteOutput);
+        let instructions = vec![Instruction::ByteIncrement(67), Instruction::ByteOutput];
         let mut result = vec![];
         let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
         interpreter(instructions, &args, &mut result);
@@ -200,8 +209,7 @@ mod tests {
 
     #[test]
     fn output_byte_as_number(){
-        let mut instructions = vec![Instruction::ByteIncrement; 67];
-        instructions.push(Instruction::ByteOutput);
+        let instructions = vec![Instruction::ByteIncrement(67), Instruction::ByteOutput];
         let mut result = vec![];
         let args = Args::new(InputMethod::Normal, OutputMethod::ByteAsNumber, false, None);
         interpreter(instructions, &args, &mut result);
@@ -211,24 +219,13 @@ mod tests {
     #[test]
     fn nya_loop(){
         let mut instructions = vec![
-            Instruction::ByteIncrement,
-            Instruction::ByteIncrement,
-            Instruction::ByteIncrement,
-            Instruction::ByteIncrement,
-            Instruction::ByteIncrement,
-            Instruction::ByteIncrement,
-            Instruction::ByteIncrement,
-            Instruction::OpenLoop(16),
-            Instruction::ByteDecrement,
-            Instruction::PointerIncrement,
-            Instruction::ByteIncrement,
-            Instruction::ByteIncrement,
-            Instruction::ByteIncrement,
-            Instruction::ByteIncrement,
-            Instruction::ByteIncrement,
-            Instruction::ByteIncrement,
-            Instruction::PointerDecrement,
-            Instruction::CloseLoop(7),
+            Instruction::ByteIncrement(7),
+            Instruction::OpenLoop(6),
+            Instruction::ByteDecrement(1),
+            Instruction::PointerIncrement(1),
+            Instruction::ByteIncrement(6),
+            Instruction::PointerDecrement(1),
+            Instruction::CloseLoop(1),
         ];
         instructions.push(Instruction::ByteOutput);
         let args = Args::new(InputMethod::Normal, OutputMethod::ByteAsNumber, false, None);

@@ -57,15 +57,15 @@ pub fn compile_to_c<T: CompilerArgs>(instructions: &Vec<Instruction>, args: &T) 
     let c_file = c_file.add("int main(){\nchar array[ARRAY_LENGTH];\nchar input[INPUT_LENGTH];\nchar first_char = 0;\nchar is_first_char_found = 0;\nfor (int i=0;i<ARRAY_LENGTH;i++){\narray[i] = 0;\n}\nunsigned long pointer = 0;\n");
 
     let c_file = c_file.add(&instructions.iter().map(|x| match x{
-        Instruction::PointerIncrement => &c_instructions.pointer_increment,
-        Instruction::PointerDecrement => &c_instructions.pointer_decrement,
-        Instruction::ByteIncrement => &c_instructions.byte_increment,
-        Instruction::ByteDecrement => &c_instructions.byte_decrement,
-        Instruction::ByteInput => &c_instructions.byte_input,
-        Instruction::ByteOutput => &c_instructions.byte_output,
-        Instruction::OpenLoop(_) => &c_instructions.open_loop,
-        Instruction::CloseLoop(_) => &c_instructions.close_loop,
-    }).map(|x| x as &str).collect::<Vec<&str>>().join("\n"));
+        Instruction::PointerIncrement(x) => format!("if (pointer >= ARRAY_LENGTH - {}){{\nfprintf(stderr, \"pointer overflow\\n\");\nreturn 1;\n}}\npointer += {};", x, x),
+        Instruction::PointerDecrement(x) => format!("if (pointer < {}){{\nfprintf(stderr, \"pointer underflow\");\nreturn 1;\n}}\npointer -= {};", x, x),
+        Instruction::ByteIncrement(x) => format!("array[pointer] += {};", x),
+        Instruction::ByteDecrement(x) => format!("array[pointer] -= {};", x),
+        Instruction::ByteInput => c_instructions.byte_input.to_string(),
+        Instruction::ByteOutput => c_instructions.byte_output.to_string(),
+        Instruction::OpenLoop(_) => c_instructions.open_loop.to_string(),
+        Instruction::CloseLoop(_) => c_instructions.close_loop.to_string(),
+    }).collect::<Vec<String>>().join("\n"));
 
     let c_file = c_file.add("\nreturn 0;\n}");
 
@@ -134,8 +134,8 @@ mod tests {
         expect_success("./increment.out", &vec!["./examples/tests/increment.bp", "--compile", "--gcc-args", "-o increment.out"], "", "C");
     }
     #[test]
-    fn increment_overflow(){
-        expect_success("./increment_overflow.out", &vec!["./examples/tests/increment_overflow.bp", "--compile", "--gcc-args", "-o increment_overflow.out"], "", "C");
+    fn byte_overflow(){
+        expect_success("./byte_overflow.out", &vec!["./examples/tests/byte_overflow.bp", "--compile", "--gcc-args", "-o byte_overflow.out"], "", "C");
     }
 
     #[test]
@@ -143,8 +143,8 @@ mod tests {
         expect_success("./decrement.out", &vec!["./examples/tests/decrement.bp", "--compile", "--gcc-args", "-o decrement.out"], "", "C");
     }
     #[test]
-    fn decrement_overflow(){
-        expect_success("./decrement_overflow.out", &vec!["./examples/tests/decrement_overflow.bp", "--compile", "--gcc-args", "-o decrement_overflow.out"], "", "C");
+    fn byte_underflow(){
+        expect_success("./byte_underflow.out", &vec!["./examples/tests/byte_underflow.bp", "--compile", "--gcc-args", "-o byte_underflow.out"], "", "C");
     }
 
     #[test]
@@ -152,8 +152,8 @@ mod tests {
         expect_success("./pointer_increment.out", &vec!["./examples/tests/pointer_increment.bp", "--compile", "--gcc-args", "-o pointer_increment.out"], "", "C\n");
     }
     #[test]
-    fn pointer_increment_overflow(){
-        expect_binary_failure("./pointer_increment_overflow.out", &vec!["./examples/tests/pointer_increment_overflow.bp", "--compile", "--gcc-args", "-o pointer_increment_overflow.out"], "");
+    fn pointer_overflow(){
+        expect_binary_failure("./pointer_overflow.out", &vec!["./examples/tests/pointer_overflow.bp", "--compile", "--gcc-args", "-o pointer_overflow.out"], "");
     }
 
     #[test]
@@ -161,8 +161,8 @@ mod tests {
         expect_success("./pointer_decrement.out", &vec!["./examples/tests/pointer_decrement.bp", "--compile", "--gcc-args", "-o pointer_decrement.out"], "", "C\n");
     }
     #[test]
-    fn pointer_decrement_overflow(){
-        expect_binary_failure("./pointer_decrement_overflow.out", &vec!["./examples/tests/pointer_decrement_overflow.bp", "--compile", "--gcc-args", "-o pointer_decrement_overflow.out"], "");
+    fn pointer_underflow(){
+        expect_binary_failure("./pointer_underflow.out", &vec!["./examples/tests/pointer_underflow.bp", "--compile", "--gcc-args", "-o pointer_underflow.out"], "");
     }
 
     #[test]
@@ -230,5 +230,14 @@ mod tests {
     #[test]
     fn input_length_overflow(){
         expect_success("./input_length_overflow.out", &vec!["./examples/echo.bp", "--input", "first-char-only", "--compile", "--gcc-args", "-o input_length_overflow.out"], "ppppppppp\no\n\0\n\n", "po\0\n");
+    }
+
+    #[test]
+    fn increment_overflow(){
+        expect_success("./increment_overflow.out", &vec!["./examples/tests/increment_overflow.bp", "--output", "byte-as-number", "--compile", "--gcc-args", "-o increment_overflow.out"], "", "0\n");
+    }
+    #[test]
+    fn decrement_overflow(){
+        expect_success("./decrement_overflow.out", &vec!["./examples/tests/decrement_overflow.bp", "--output", "byte-as-number", "--compile", "--gcc-args", "-o decrement_overflow.out"], "", "0\n");
     }
 }
