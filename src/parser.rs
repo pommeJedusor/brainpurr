@@ -83,7 +83,6 @@ pub fn optimize_instructions(mut instructions: Vec<Instruction>) -> Vec<Instruct
             }).map(|x| x.to_owned()).collect();
 
         if instructions.len() == pre_optimization_length{
-            dbg!(&instructions);
             return instructions;
         }else {
             pre_optimization_length = instructions.len();

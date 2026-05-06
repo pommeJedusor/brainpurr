@@ -1,6 +1,6 @@
 use std::{io::{self, Write}, process};
 
-use crate::{InputMethod, OutputMethod, args::InterpreterArgs, parser::Instruction};
+use crate::{InputMethod, OutputMethod, args::{InterpreterArgs, PointerWrapMode}, parser::Instruction};
 
 fn newline_zero_map(char: u8) -> u8{
     match char{
@@ -18,6 +18,7 @@ pub fn interpreter<T: InterpreterArgs>(instructions: Vec<Instruction>, args: &T,
     let output_method = args.get_output_method();
     let newline_zero = args.get_newline_zero();
     let max_array_size = args.get_max_array_size();
+    let pointer_wrap_mode = args.get_pointer_wrap_mode();
     
     let newline_zero_func = if newline_zero {newline_zero_map} else {useless_map};
 
@@ -32,15 +33,41 @@ pub fn interpreter<T: InterpreterArgs>(instructions: Vec<Instruction>, args: &T,
     while instruction_pointer < instructions.len(){
         match instructions[instruction_pointer] {
             Instruction::PointerIncrement(x) => {
-                if array.len() == array_pointer + x && max_array_size.is_none() {
-                    array.push(0);
-                }else if array.len() == array_pointer + x {
-                    eprintln!("pointer overflow");
-                    process::exit(1);
+                if max_array_size.is_none() {
+                    while array.len() <= array_pointer + x {
+                        array.push(0);
+                    }
+                    array_pointer += x;
+                }else {
+                    array_pointer = match pointer_wrap_mode {
+                        PointerWrapMode::Crash => {
+                            if array_pointer + x >= array.len(){
+                                eprintln!("pointer overflow"); process::exit(1);
+                            }else {
+                                array_pointer + x
+                            }
+                            
+                        },
+                        PointerWrapMode::Unsafe => array_pointer + x,
+                        PointerWrapMode::WrapAround => (array_pointer + x) % array.len(),
+                        PointerWrapMode::Stick => array.len() - 1,
+                    }
                 }
-                array_pointer += x
             },
-            Instruction::PointerDecrement(x) => array_pointer -= x,
+            Instruction::PointerDecrement(x) => {
+                if array_pointer >= x {
+                    array_pointer -= x
+                }else {
+                    array_pointer = match pointer_wrap_mode {
+                        PointerWrapMode::Crash => {
+                            eprintln!("pointer overflow"); process::exit(1);
+                        },
+                        PointerWrapMode::Unsafe => array_pointer - x,
+                        PointerWrapMode::WrapAround => (array_pointer + array.len() * 2 - x) % array.len(),
+                        PointerWrapMode::Stick => 0,
+                    }
+                }
+            },
             Instruction::ByteIncrement(x) => array[array_pointer] = array[array_pointer].wrapping_add((x % 256) as u8),
             Instruction::ByteDecrement(x) => array[array_pointer] = array[array_pointer].wrapping_sub((x % 256) as u8),
             Instruction::ByteInput => {
@@ -97,6 +124,7 @@ mod tests {
         output: OutputMethod,
         newline_zero: bool,
         max_array_size: Option<u32>,
+        pointer_wrap_mode: PointerWrapMode,
     }
 
     impl InterpreterArgs for Args {
@@ -104,65 +132,127 @@ mod tests {
         fn get_output_method(&self) -> &OutputMethod { &self.output }
         fn get_newline_zero(&self) -> bool { self.newline_zero }
         fn get_max_array_size(&self) -> Option<u32> { self.max_array_size }
+        fn get_pointer_wrap_mode(&self) -> &PointerWrapMode { &self.pointer_wrap_mode }
     }
 
     impl Args {
-        fn new(input: InputMethod, output: OutputMethod, newline_zero: bool, max_array_size: Option<u32>) -> Self{
-            Self { input, output, newline_zero, max_array_size }
+        fn new(input: InputMethod, output: OutputMethod, newline_zero: bool, max_array_size: Option<u32>, pointer_wrap_mode: PointerWrapMode) -> Self{
+            Self { input, output, newline_zero, max_array_size, pointer_wrap_mode }
         }
     }
 
     #[test]
     fn increment(){
-        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
+        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None, PointerWrapMode::Crash);
         assert_eq!(interpreter(vec![Instruction::ByteIncrement(1)], &args, &mut vec![]), vec![1]);
     }
 
     #[test]
     fn byte_overflow(){
-        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
+        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None, PointerWrapMode::Crash);
         assert_eq!(interpreter(vec![Instruction::ByteIncrement(1); 256], &args, &mut vec![]), vec![0]);
     }
     #[test]
     fn increment_overflow(){
-        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
+        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None, PointerWrapMode::Crash);
         assert_eq!(interpreter(vec![Instruction::ByteIncrement(256)], &args, &mut vec![]), vec![0]);
     }
 
     #[test]
     fn decrement(){
-        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
+        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None, PointerWrapMode::Crash);
         assert_eq!(interpreter(vec![Instruction::ByteIncrement(1), Instruction::ByteDecrement(1)], &args, &mut vec![]), vec![0]);
     }
 
     #[test]
     fn byte_underflow(){
-        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
+        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None, PointerWrapMode::Crash);
         assert_eq!(interpreter(vec![Instruction::ByteDecrement(1); 256], &args, &mut vec![]), vec![0]);
     }
     #[test]
     fn decrement_overflow(){
-        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
+        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None, PointerWrapMode::Crash);
         assert_eq!(interpreter(vec![Instruction::ByteDecrement(256)], &args, &mut vec![]), vec![0]);
     }
 
     #[test]
     fn pointer_increment(){
-        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
+        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None, PointerWrapMode::Crash);
         assert_eq!(interpreter(vec![Instruction::PointerIncrement(1), Instruction::ByteIncrement(1)], &args, &mut vec![]), vec![0, 1]);
     }
 
     #[test]
     fn pointer_decrement(){
-        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
+        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None, PointerWrapMode::Crash);
         assert_eq!(interpreter(vec![Instruction::PointerIncrement(1), Instruction::PointerDecrement(1), Instruction::ByteIncrement(1)], &args, &mut vec![]), vec![1, 0]);
     }
 
     #[test]
-    #[should_panic]
-    fn pointer_underflow(){
-        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
-        interpreter(vec![Instruction::PointerDecrement(1)], &args, &mut vec![]);
+    fn pointer_decrement_underflow(){
+        let mut cmd = Command::cargo_bin("brainpurr").unwrap();
+        cmd.args(&["./examples/tests/pointer_decrement_underflow_wrap_around.bp"])
+            .write_stdin("")
+            .assert()
+            .stdout("\0")
+            .code(1)
+            .failure();
+    }
+
+    #[test]
+    fn pointer_decrement_underflow_wrap_around(){
+        let mut cmd = Command::cargo_bin("brainpurr").unwrap();
+        cmd.args(&["./examples/tests/pointer_decrement_underflow_wrap_around.bp", "--pointer-wrap", "wrap-around", "--max-array-size", "2"])
+            .write_stdin("")
+            .assert()
+            .stdout("\0\n")
+            .success();
+    }
+    #[test]
+    fn pointer_decrement_underflow_wrap_around_stick(){
+        let mut cmd = Command::cargo_bin("brainpurr").unwrap();
+        cmd.args(&["./examples/tests/pointer_decrement_underflow_wrap_around.bp", "--pointer-wrap", "stick", "--max-array-size", "2"])
+            .write_stdin("")
+            .assert()
+            .stdout("\0\0")
+            .success();
+    }
+    #[test]
+    fn pointer_decrement_underflow_wrap_around_crash(){
+        let mut cmd = Command::cargo_bin("brainpurr").unwrap();
+        cmd.args(&["./examples/tests/pointer_decrement_underflow_wrap_around.bp", "--pointer-wrap", "crash", "--max-array-size", "2"])
+            .write_stdin("")
+            .assert()
+            .stdout("\0")
+            .failure()
+            .code(1);
+    }
+    #[test]
+    fn pointer_increment_overflow_wrap_around(){
+        let mut cmd = Command::cargo_bin("brainpurr").unwrap();
+        cmd.args(&["./examples/tests/pointer_increment_overflow_wrap_around.bp", "--pointer-wrap", "wrap-around", "--max-array-size", "2"])
+            .write_stdin("")
+            .assert()
+            .stdout("\0\n")
+            .success();
+    }
+    #[test]
+    fn pointer_increment_overflow_wrap_around_stick(){
+        let mut cmd = Command::cargo_bin("brainpurr").unwrap();
+        cmd.args(&["./examples/tests/pointer_increment_overflow_wrap_around.bp", "--pointer-wrap", "stick", "--max-array-size", "2"])
+            .write_stdin("")
+            .assert()
+            .stdout("\0\0")
+            .success();
+    }
+    #[test]
+    fn pointer_increment_overflow_wrap_around_crash(){
+        let mut cmd = Command::cargo_bin("brainpurr").unwrap();
+        cmd.args(&["./examples/tests/pointer_increment_overflow_wrap_around.bp", "--pointer-wrap", "crash", "--max-array-size", "2"])
+            .write_stdin("")
+            .assert()
+            .stdout("\0")
+            .failure()
+            .code(1);
     }
 
     #[test]
@@ -202,7 +292,7 @@ mod tests {
     fn output_normal_mode(){
         let instructions = vec![Instruction::ByteIncrement(67), Instruction::ByteOutput];
         let mut result = vec![];
-        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None);
+        let args = Args::new(InputMethod::Normal, OutputMethod::Normal, false, None, PointerWrapMode::Crash);
         interpreter(instructions, &args, &mut result);
         assert_eq!(result, vec![67])
     }
@@ -211,7 +301,7 @@ mod tests {
     fn output_byte_as_number(){
         let instructions = vec![Instruction::ByteIncrement(67), Instruction::ByteOutput];
         let mut result = vec![];
-        let args = Args::new(InputMethod::Normal, OutputMethod::ByteAsNumber, false, None);
+        let args = Args::new(InputMethod::Normal, OutputMethod::ByteAsNumber, false, None, PointerWrapMode::Crash);
         interpreter(instructions, &args, &mut result);
         assert_eq!(result, vec!['6' as u8, '7' as u8, '\n' as u8])
     }
@@ -228,7 +318,7 @@ mod tests {
             Instruction::CloseLoop(1),
         ];
         instructions.push(Instruction::ByteOutput);
-        let args = Args::new(InputMethod::Normal, OutputMethod::ByteAsNumber, false, None);
+        let args = Args::new(InputMethod::Normal, OutputMethod::ByteAsNumber, false, None, PointerWrapMode::Crash);
         let result = interpreter(instructions, &args, &mut vec![]);
         assert_eq!(result, vec![0, 42])
     }

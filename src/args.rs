@@ -54,6 +54,10 @@ pub struct Args {
     /// value by 10
     #[arg(long)]
     pub newline_zero: bool,
+
+    #[clap(value_enum)]
+    #[arg(long, default_value_t=PointerWrapMode::Crash)]
+    pub pointer_wrap: PointerWrapMode,
 }
 
 #[derive(clap::ValueEnum, Debug, Clone, Hash)]
@@ -74,11 +78,27 @@ pub enum OutputMethod {
     ByteAsNumber,
 }
 
+#[derive(clap::ValueEnum, Debug, Clone, Hash)]
+pub enum PointerWrapMode {
+    /// crashes if the pointer goes under 0 or higher than the array limit size
+    Crash,
+    /// doesn't check for overflow/undeflow, the behavior is undefined in case it happens, might
+    /// make your code run faster because doesn't check for it
+    Unsafe,
+    /// in case of overflow goes back to 0 (e.g.array size limit = 10, pointer = 9 if it gets
+    /// increase by 1 it will become 0) and vice-versa
+    WrapAround,
+    /// in case of overflow/underflow doesn't change the value (e.g. if pointer = 0 and it gets
+    /// decrease it will stay at 0)
+    Stick,
+}
+
 pub trait InterpreterArgs{
     fn get_input_method(&self) -> &InputMethod;
     fn get_output_method(&self) -> &OutputMethod;
     fn get_newline_zero(&self) -> bool;
     fn get_max_array_size(&self) -> Option<u32>;
+    fn get_pointer_wrap_mode(&self) -> &PointerWrapMode;
 }
 
 impl InterpreterArgs for Args {
@@ -86,6 +106,7 @@ impl InterpreterArgs for Args {
     fn get_output_method(&self) -> &OutputMethod { &self.output }
     fn get_newline_zero(&self) -> bool { self.newline_zero }
     fn get_max_array_size(&self) -> Option<u32> { self.max_array_size }
+    fn get_pointer_wrap_mode(&self) -> &PointerWrapMode { &self.pointer_wrap }
 }
 
 pub trait CompilerArgs{
@@ -94,6 +115,7 @@ pub trait CompilerArgs{
     fn get_newline_zero(&self) -> bool;
     fn get_max_array_size(&self) -> u32;
     fn get_gcc_args(&self) -> Option<String>;
+    fn get_pointer_wrap_mode(&self) -> &PointerWrapMode;
 }
 
 impl CompilerArgs for Args {
@@ -102,4 +124,5 @@ impl CompilerArgs for Args {
     fn get_newline_zero(&self) -> bool { self.newline_zero }
     fn get_max_array_size(&self) -> u32 { self.max_array_size.unwrap_or(67000) }
     fn get_gcc_args(&self) -> Option<String> { self.gcc_args.clone() }
+    fn get_pointer_wrap_mode(&self) -> &PointerWrapMode { &self.pointer_wrap }
 }
