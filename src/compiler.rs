@@ -109,184 +109,426 @@ pub fn compile_to_file<T: CompilerArgs>(instructions: &Vec<Instruction>, args: &
 #[cfg(test)]
 mod tests {
     use super::*;
-    use assert_cmd::{Command, assert::OutputAssertExt};
-    use predicates::prelude::predicate;
+    use assert_cmd::{Command};
 
-    fn expect_success(exe_name: &str, args: &Vec<&str>, stdin: &str, expected_output: &str){
+    fn compile(exe_name: &str, args: &Vec<&str>){
+        let mut args = args.clone();
+        let gcc_args = &format!("-o {exe_name}");
+        args.push("--compile");
+        args.push("--gcc-args");
+        args.push(&gcc_args);
         let mut cmd = Command::cargo_bin("brainpurr").unwrap();
         cmd
             .args(args)
             .assert()
             .code(0);
-        let cmd = Command::new(exe_name).write_stdin(stdin).unwrap();
-        let _ = cmd
-           .assert()
-           .code(0)
-           .stdout(predicate::eq(expected_output.to_string().into_bytes()));
-        fs::remove_file(exe_name).unwrap();
-    }
-    fn expect_binary_failure(exe_name: &str, args: &Vec<&str>, stdin: &str){
-        let mut cmd = Command::cargo_bin("brainpurr").unwrap();
-        cmd
-            .args(args)
-            .assert()
-            .code(0);
-        let cmd = Command::new(exe_name).write_stdin(stdin).assert();
-        // TODO use macro to be more clear about the expected result in each test
-        //cmd.code(1).failure().stdout(predicate::str::is_empty());
-        cmd.code(1).failure();
-        fs::remove_file(exe_name).unwrap();
     }
 
     // mrp
     #[test]
     fn increment(){
-        expect_success("./increment.out", &vec!["./examples/tests/increment.bp", "--compile", "--gcc-args", "-o increment.out"], "", "C");
+        let exe_name = "./increment.out";
+        compile(exe_name, &vec!["./examples/tests/increment.bp"]);
+        Command::new(exe_name)
+            .write_stdin("")
+            .assert()
+            .success()
+            .code(0)
+            .stdout("C");
+        fs::remove_file(exe_name).unwrap();
     }
     #[test]
     fn byte_overflow(){
-        expect_success("./byte_overflow.out", &vec!["./examples/tests/byte_overflow.bp", "--compile", "--gcc-args", "-o byte_overflow.out"], "", "C");
+        let exe_name = "./byte_overflow.out";
+        compile(exe_name, &vec!["./examples/tests/byte_overflow.bp"]);
+        Command::new(exe_name)
+            .write_stdin("")
+            .assert()
+            .success()
+            .code(0)
+            .stdout("C");
+        fs::remove_file(exe_name).unwrap();
     }
     #[test]
     fn increment_overflow(){
-        expect_success("./increment_overflow.out", &vec!["./examples/tests/increment_overflow.bp", "--output", "byte-as-number", "--compile", "--gcc-args", "-o increment_overflow.out"], "", "0\n");
+        let exe_name = "./increment_overflow.out";
+        compile(exe_name, &vec!["./examples/tests/increment_overflow.bp", "--output", "byte-as-number"]);
+        Command::new(exe_name)
+            .write_stdin("")
+            .assert()
+            .success()
+            .code(0)
+            .stdout("0\n");
+        fs::remove_file(exe_name).unwrap();
     }
 
     // purr
     #[test]
     fn decrement(){
-        expect_success("./decrement.out", &vec!["./examples/tests/decrement.bp", "--compile", "--gcc-args", "-o decrement.out"], "", "C");
+        let exe_name = "./decrement.out";
+        compile(exe_name, &vec!["./examples/tests/decrement.bp"]);
+        Command::new(exe_name)
+            .write_stdin("")
+            .assert()
+            .success()
+            .code(0)
+            .stdout("C");
+        fs::remove_file(exe_name).unwrap();
     }
     #[test]
     fn byte_underflow(){
-        expect_success("./byte_underflow.out", &vec!["./examples/tests/byte_underflow.bp", "--compile", "--gcc-args", "-o byte_underflow.out"], "", "C");
+        let exe_name = "./byte_underflow.out";
+        compile(exe_name, &vec!["./examples/tests/byte_underflow.bp"]);
+        Command::new(exe_name)
+            .write_stdin("")
+            .assert()
+            .success()
+            .code(0)
+            .stdout("C");
+        fs::remove_file(exe_name).unwrap();
     }
     #[test]
     fn decrement_overflow(){
-        expect_success("./decrement_overflow.out", &vec!["./examples/tests/decrement_overflow.bp", "--output", "byte-as-number", "--compile", "--gcc-args", "-o decrement_overflow.out"], "", "0\n");
+        let exe_name = "./decrement_overflow.out";
+        compile(exe_name, &vec!["./examples/tests/decrement_overflow.bp", "--output", "byte-as-number"]);
+        Command::new(exe_name)
+            .write_stdin("")
+            .assert()
+            .success()
+            .code(0)
+            .stdout("0\n");
+        fs::remove_file(exe_name).unwrap();
     }
 
     // meow
     #[test]
     fn pointer_increment(){
-        expect_success("./pointer_increment.out", &vec!["./examples/tests/pointer_increment.bp", "--compile", "--gcc-args", "-o pointer_increment.out"], "", "C\n");
+        let exe_name = "./pointer_increment.out";
+        compile(exe_name, &vec!["./examples/tests/pointer_increment.bp"]);
+        Command::new(exe_name)
+            .write_stdin("")
+            .assert()
+            .success()
+            .code(0)
+            .stdout("C\n");
+        fs::remove_file(exe_name).unwrap();
     }
     #[test]
     fn pointer_overflow(){
-        expect_binary_failure("./pointer_overflow.out", &vec!["./examples/tests/pointer_overflow.bp", "--compile", "--gcc-args", "-o pointer_overflow.out"], "");
+        let exe_name = "./pointer_overflow.out";
+        compile(exe_name, &vec!["./examples/tests/pointer_overflow.bp"]);
+        Command::new(exe_name)
+            .write_stdin("")
+            .assert()
+            .failure()
+            .code(1)
+            .stdout("");
+        fs::remove_file(exe_name).unwrap();
     }
     // PointerWrapMode
     #[test]
     fn pointer_increment_overflow_wrap_around(){
-        expect_success("./pointer_increment_overflow_wrap_around.out", &vec!["./examples/tests/pointer_increment_overflow_wrap_around.bp", "--compile", "--gcc-args", "-o pointer_increment_overflow_wrap_around.out", "--pointer-wrap", "wrap-around", "--max-array-size", "2"], "", "\0\n");
+        let exe_name = "./pointer_increment_overflow_wrap_around.out";
+        compile(exe_name, &vec!["./examples/tests/pointer_increment_overflow_wrap_around.bp", "--pointer-wrap", "wrap-around", "--max-array-size", "2"]);
+        Command::new(exe_name)
+            .write_stdin("")
+            .assert()
+            .success()
+            .code(0)
+            .stdout("\0\n");
+        fs::remove_file(exe_name).unwrap();
     }
     #[test]
     fn pointer_increment_overflow_wrap_around_stick(){
-       expect_success("./pointer_increment_overflow_wrap_around_stick.out", &vec!["./examples/tests/pointer_increment_overflow_wrap_around.bp", "--compile", "--gcc-args", "-o pointer_increment_overflow_wrap_around_stick.out", "--pointer-wrap", "stick", "--max-array-size", "2"], "", "\0\0");
+        let exe_name = "./pointer_increment_overflow_wrap_around_stick.out";
+        compile(exe_name, &vec!["./examples/tests/pointer_increment_overflow_wrap_around.bp", "--pointer-wrap", "stick", "--max-array-size", "2"]);
+        Command::new(exe_name)
+            .write_stdin("")
+            .assert()
+            .success()
+            .code(0)
+            .stdout("\0\0");
+        fs::remove_file(exe_name).unwrap();
     }
     #[test]
     fn pointer_increment_overflow_wrap_around_crash(){
-       expect_binary_failure("./pointer_increment_overflow_wrap_around_crash.out", &vec!["./examples/tests/pointer_increment_overflow_wrap_around.bp", "--compile", "--gcc-args", "-o pointer_increment_overflow_wrap_around_crash.out", "--pointer-wrap", "crash", "--max-array-size", "2"], "");
+        let exe_name = "./pointer_increment_overflow_wrap_around_crash.out";
+        compile(exe_name, &vec!["./examples/tests/pointer_increment_overflow_wrap_around.bp", "--pointer-wrap", "crash", "--max-array-size", "2"]);
+        Command::new(exe_name)
+            .write_stdin("")
+            .assert()
+            .failure()
+            .code(1)
+            .stdout("\0");
+        fs::remove_file(exe_name).unwrap();
     }
 
     // mrow
     #[test]
     fn pointer_decrement(){
-        expect_success("./pointer_decrement.out", &vec!["./examples/tests/pointer_decrement.bp", "--compile", "--gcc-args", "-o pointer_decrement.out"], "", "C\n");
+        let exe_name = "./pointer_decrement.out";
+        compile(exe_name, &vec!["./examples/tests/pointer_decrement.bp"]);
+        Command::new(exe_name)
+            .write_stdin("")
+            .assert()
+            .success()
+            .code(0)
+            .stdout("C\n");
+        fs::remove_file(exe_name).unwrap();
     }
     #[test]
     fn pointer_underflow(){
-        expect_binary_failure("./pointer_underflow.out", &vec!["./examples/tests/pointer_underflow.bp", "--compile", "--gcc-args", "-o pointer_underflow.out"], "");
+        let exe_name = "./pointer_underflow.out";
+        compile(exe_name, &vec!["./examples/tests/pointer_underflow.bp"]);
+        Command::new(exe_name)
+            .write_stdin("")
+            .assert()
+            .failure()
+            .code(1)
+            .stdout("");
+        fs::remove_file(exe_name).unwrap();
     }
     // PointerWrapMode
     #[test]
     fn pointer_decrement_underflow_wrap_around(){
-        expect_success("./pointer_decrement_underflow_wrap_around.out", &vec!["./examples/tests/pointer_decrement_underflow_wrap_around.bp", "--compile", "--gcc-args", "-o pointer_decrement_underflow_wrap_around.out", "--pointer-wrap", "wrap-around", "--max-array-size", "2"], "", "\0\n");
+        let exe_name = "./pointer_decrement_underflow_wrap_around.out";
+        compile(exe_name, &vec!["./examples/tests/pointer_decrement_underflow_wrap_around.bp", "--pointer-wrap", "wrap-around", "--max-array-size", "2"]);
+        Command::new(exe_name)
+            .write_stdin("")
+            .assert()
+            .success()
+            .code(0)
+            .stdout("\0\n");
+        fs::remove_file(exe_name).unwrap();
     }
     #[test]
     fn pointer_decrement_underflow_wrap_around_stick(){
-        expect_success("./pointer_decrement_underflow_wrap_around_stick.out", &vec!["./examples/tests/pointer_decrement_underflow_wrap_around.bp", "--compile", "--gcc-args", "-o pointer_decrement_underflow_wrap_around_stick.out", "--pointer-wrap", "stick", "--max-array-size", "2"], "", "\0\0");
+        let exe_name = "./pointer_decrement_underflow_wrap_around_stick.out";
+        compile(exe_name, &vec!["./examples/tests/pointer_decrement_underflow_wrap_around.bp", "--pointer-wrap", "stick", "--max-array-size", "2"]);
+        Command::new(exe_name)
+            .write_stdin("")
+            .assert()
+            .success()
+            .code(0)
+            .stdout("\0\0");
+        fs::remove_file(exe_name).unwrap();
     }
     #[test]
     fn pointer_decrement_underflow_wrap_around_crash(){
-        expect_binary_failure("./pointer_decrement_underflow_wrap_around_crash.out", &vec!["./examples/tests/pointer_decrement_underflow_wrap_around.bp", "--compile", "--gcc-args", "-o pointer_decrement_underflow_wrap_around_crash.out", "--pointer-wrap", "crash", "--max-array-size", "2"], "");
+        let exe_name = "./pointer_decrement_underflow_wrap_around_crash.out";
+        compile(exe_name, &vec!["./examples/tests/pointer_decrement_underflow_wrap_around.bp", "--pointer-wrap", "crash", "--max-array-size", "2"]);
+        Command::new(exe_name)
+            .write_stdin("")
+            .assert()
+            .failure()
+            .code(1)
+            .stdout("\0");
+        fs::remove_file(exe_name).unwrap();
     }
 
     // >:3
     #[test]
     fn input(){
-        expect_success("./input.out", &vec!["./examples/tests/input.bp", "--compile", "--gcc-args", "-o input.out"], "C", "C");
+        let exe_name = "./input.out";
+        compile(exe_name, &vec!["./examples/tests/input.bp"]);
+        Command::new(exe_name)
+            .write_stdin("C")
+            .assert()
+            .success()
+            .code(0)
+            .stdout("C");
+        fs::remove_file(exe_name).unwrap();
     }
     #[test]
     fn input_normal_mode(){
-        expect_success("./input_normal_mode.out", &vec!["./examples/echo.bp", "--compile", "--gcc-args", "-o input_normal_mode.out"], "pomme is cute\n", "pomme is cute\n");
+        let exe_name = "./input_normal_mode.out";
+        compile(exe_name, &vec!["./examples/echo.bp"]);
+        Command::new(exe_name)
+            .write_stdin("pomme is cute\n")
+            .assert()
+            .success()
+            .code(0)
+            .stdout("pomme is cute\n");
+        fs::remove_file(exe_name).unwrap();
     }
     #[test]
     fn input_first_char_only(){
-        expect_success("./input_first_char_only.out", &vec!["./examples/echo.bp", "--input", "first-char-only", "--compile", "--gcc-args", "-o input_first_char_only.out"], &"p\n".chars().map(|x| x.to_string()).collect::<Vec<String>>().join("\n"), "p\n");
+        let exe_name = "./input_first_char_only.out";
+        compile(exe_name, &vec!["./examples/echo.bp", "--input", "first-char-only"]);
+        Command::new(exe_name)
+            .write_stdin("pomme is cute\n".chars().map(|x| x.to_string()).collect::<Vec<String>>().join("\n"))
+            .assert()
+            .success()
+            .code(0)
+            .stdout("pomme is cute\n");
+        fs::remove_file(exe_name).unwrap();
     }
     #[test]
     fn input_byte_as_number(){
-        expect_success("./input_byte_as_number.out", &vec!["./examples/echo.bp", "--input", "byte-as-number", "--compile", "--gcc-args", "-o input_byte_as_number.out"], &"pomme is cute\n".chars().map(|x| format!("{}\n", x as u8)).collect::<String>(), "pomme is cute\n");
+        let exe_name = "./input_byte_as_number.out";
+        compile(exe_name, &vec!["./examples/echo.bp", "--input", "byte-as-number"]);
+        Command::new(exe_name)
+            .write_stdin("pomme is cute\n".chars().map(|x| format!("{}\n", x as u8)).collect::<String>())
+            .assert()
+            .success()
+            .code(0)
+            .stdout("pomme is cute\n");
+        fs::remove_file(exe_name).unwrap();
     }
     #[test]
     fn input_length_overflow(){
-        expect_success("./input_length_overflow.out", &vec!["./examples/echo.bp", "--input", "first-char-only", "--compile", "--gcc-args", "-o input_length_overflow.out"], "ppppppppp\no\n\0\n\n", "po\0\n");
+        let exe_name = "./input_length_overflow.out";
+        compile(exe_name, &vec!["./examples/echo.bp", "--input", "first-char-only"]);
+        Command::new(exe_name)
+            .write_stdin("ppppppppp\no\n\0\n\n")
+            .assert()
+            .success()
+            .code(0)
+            .stdout("po\0\n");
+        fs::remove_file(exe_name).unwrap();
     }
 
 
     // :3c
     #[test]
     fn output(){
-        expect_success("./output.out", &vec!["./examples/tests/output.bp", "--compile", "--gcc-args", "-o output.out"], "", "\0");
+        let exe_name = "./output.out";
+        compile(exe_name, &vec!["./examples/tests/output.bp"]);
+        Command::new(exe_name)
+            .write_stdin("")
+            .assert()
+            .success()
+            .code(0)
+            .stdout("\0");
+        fs::remove_file(exe_name).unwrap();
     }
     #[test]
     fn output_normal_mode(){
-        expect_success("./output_normal_mode.out", &vec!["./examples/echo.bp", "--output", "normal", "--compile", "--gcc-args", "-o output_normal_mode.out"], "pomme is cute\n", "pomme is cute\n");
+        let exe_name = "./output_normal_mode.out";
+        compile(exe_name, &vec!["./examples/echo.bp", "--output", "normal"]);
+        Command::new(exe_name)
+            .write_stdin("pomme is cute\n")
+            .assert()
+            .success()
+            .code(0)
+            .stdout("pomme is cute\n");
+        fs::remove_file(exe_name).unwrap();
     }
     #[test]
     fn output_byte_as_number(){
-        expect_success("./output_byte_as_number.out", &vec!["./examples/echo.bp", "--output", "byte-as-number", "--compile", "--gcc-args", "-o output_byte_as_number.out"], "C\n", "67\n10\n");
+        let exe_name = "./output_byte_as_number.out";
+        compile(exe_name, &vec!["./examples/echo.bp", "--output", "byte-as-number"]);
+        Command::new(exe_name)
+            .write_stdin("C\n")
+            .assert()
+            .success()
+            .code(0)
+            .stdout("67\n10\n");
+        fs::remove_file(exe_name).unwrap();
     }
 
     // nya :3
     #[test]
     fn useless_loop(){
-        expect_success("./useless_loop.out", &vec!["./examples/tests/useless_loop.bp", "--compile", "--gcc-args", "-o useless_loop.out"], "", "\0");
+        let exe_name = "./useless_loop.out";
+        compile(exe_name, &vec!["./examples/tests/useless_loop.bp"]);
+        Command::new(exe_name)
+            .write_stdin("")
+            .assert()
+            .success()
+            .code(0)
+            .stdout("\0");
+        fs::remove_file(exe_name).unwrap();
     }
     #[test]
     fn useful_loop(){
-        expect_success("./useful_loop.out", &vec!["./examples/tests/useful_loop.bp", "--compile", "--gcc-args", "-o useful_loop.out"], "", "\n");
+        let exe_name = "./useful_loop.out";
+        compile(exe_name, &vec!["./examples/tests/useful_loop.bp"]);
+        Command::new(exe_name)
+            .write_stdin("")
+            .assert()
+            .success()
+            .code(0)
+            .stdout("\n");
+        fs::remove_file(exe_name).unwrap();
     }
 
     // max array size
     #[test]
     fn max_array_size_border(){
-        expect_success("./max_array_size_border.out", &vec!["./examples/tests/max_array_size_border.bp", "--compile", "--gcc-args", "-o max_array_size_border.out", "--max-array-size", "10"], "", "");
+        let exe_name = "./max_array_size_border.out";
+        compile(exe_name, &vec!["./examples/tests/max_array_size_border.bp", "--max-array-size", "10"]);
+        Command::new(exe_name)
+            .write_stdin("")
+            .assert()
+            .success()
+            .code(0)
+            .stdout("");
+        fs::remove_file(exe_name).unwrap();
     }
     #[test]
     fn max_array_size_overflow(){
-        expect_binary_failure("./max_array_size_overflow.out", &vec!["./examples/tests/max_array_size_border.bp", "--compile", "--gcc-args", "-o max_array_size_overflow.out", "--max-array-size", "9"], "");
+        let exe_name = "./max_array_size_overflow.out";
+        compile(exe_name, &vec!["./examples/tests/max_array_size_border.bp", "--max-array-size", "9"]);
+        Command::new(exe_name)
+            .write_stdin("")
+            .assert()
+            .failure()
+            .code(1)
+            .stdout("");
+        fs::remove_file(exe_name).unwrap();
     }
     #[test]
     fn array_empty(){
-        expect_binary_failure("./array_empty.out", &vec!["./examples/tests/array_empty.bp", "--compile", "--gcc-args", "-o array_empty.out", "--max-array-size", "1000000"], "");
+        let exe_name = "./array_empty.out";
+        compile(exe_name, &vec!["./examples/tests/array_empty.bp", "--max-array-size", "1000000"]);
+        Command::new(exe_name)
+            .write_stdin("")
+            .assert()
+            .failure()
+            .code(1)
+            .stdout("");
+        fs::remove_file(exe_name).unwrap();
     }
 
     // newline zero
     #[test]
     fn newline_zero_normal_mode(){
         // normal mode for both input and output
-        expect_success("./newline_zero_normal_mode.out", &vec!["./examples/tests/newline_zero.bp", "--compile", "--gcc-args", "-o newline_zero_normal_mode.out", "--newline-zero", "--input", "normal", "--output", "normal"], "\n\0", "\n\0\n\0");
+        let exe_name = "./newline_zero_normal_mode.out";
+        compile(exe_name, &vec!["./examples/tests/newline_zero.bp", "--newline-zero", "--input", "normal", "--output", "normal"]);
+        Command::new(exe_name)
+            .write_stdin("\n\0")
+            .assert()
+            .success()
+            .code(0)
+            .stdout("\n\0\n\0");
+        fs::remove_file(exe_name).unwrap();
     }
     #[test]
     fn newline_zero_byte_as_number(){
         // byte-as-number for both input and output
-        expect_success("./newline_zero_byte_as_number.out", &vec!["./examples/tests/newline_zero.bp", "--compile", "--gcc-args", "-o newline_zero_byte_as_number.out", "--newline-zero", "--input", "byte-as-number", "--output", "byte-as-number"], "10\n0\n", "10\n0\n10\n0\n");
+        let exe_name = "./newline_zero_byte_as_number.out";
+        compile(exe_name, &vec!["./examples/tests/newline_zero.bp", "--newline-zero", "--input", "byte-as-number", "--output", "byte-as-number"]);
+        Command::new(exe_name)
+            .write_stdin("10\n0\n")
+            .assert()
+            .success()
+            .code(0)
+            .stdout("10\n0\n10\n0\n");
+        fs::remove_file(exe_name).unwrap();
     }
     #[test]
     fn newline_zero_first_char_only(){
         // first-char-only mode for input and normal mode for output
-        expect_success("./newline_zero_first_char_only.out", &vec!["./examples/tests/newline_zero.bp", "--compile", "--gcc-args", "-o newline_zero_first_char_only.out", "--newline-zero", "--input", "first-char-only"], "\n\0\n", "\n\0\n\0");
+        let exe_name = "./newline_zero_first_char_only.out";
+        compile(exe_name, &vec!["./examples/tests/newline_zero.bp", "--newline-zero", "--input", "first-char-only"]);
+        Command::new(exe_name)
+            .write_stdin("\n\0\n")
+            .assert()
+            .success()
+            .code(0)
+            .stdout("\n\0\n\0");
+        fs::remove_file(exe_name).unwrap();
     }
 }
