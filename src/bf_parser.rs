@@ -69,4 +69,9 @@ mod tests {
     fn too_many_close_loop(){
         parse("[]]");
     }
+
+    #[test]
+    fn optimizations(){
+        assert_eq!(parse(">+>+>+-<-<-<"),vec![]);
+    }
 }
