@@ -2,116 +2,144 @@ use std::{io::{self, Write}, process};
 
 use crate::{args::{InputMethod, OutputMethod, InterpreterArgs, PointerWrapMode}, parser::Instruction};
 
-fn newline_zero_map(char: u8) -> u8{
-    match char{
-        0 => 10,
-        10 => 0,
-        _ => char,
+fn newline_zero_func(char: u8, newline_zero: bool) -> u8 {
+    match (char, newline_zero){
+        (0, true) => 10,
+        (10, true) => 0,
+        (char, _) => char,
     }
 }
-fn useless_map(char: u8) -> u8{
-    char
+
+struct HeapState{
+    array: Vec<u8>,
+    array_pointer: usize,
+    instruction_pointer: usize,
+    input_queue: Vec<u8>,
+}
+
+impl HeapState {
+    fn new(array: Vec<u8>, array_pointer: usize, instruction_pointer: usize, input_queue: Vec<u8>,) -> HeapState {
+        Self { array, array_pointer, instruction_pointer, input_queue }
+    }
+}
+
+fn increment_instruction<T: InterpreterArgs>(heap_state: &mut HeapState, args: &T, x: usize){
+    if args.get_max_array_size().is_none() {
+        heap_state.array_pointer += x;
+        while heap_state.array.len() <= heap_state.array_pointer {
+            heap_state.array.push(0);
+        }
+    }else {
+        heap_state.array_pointer = match args.get_pointer_wrap_mode() {
+            PointerWrapMode::Crash => {
+                if heap_state.array_pointer + x >= heap_state.array.len(){
+                    eprintln!("pointer overflow"); process::exit(1);
+                }
+                heap_state.array_pointer + x
+            },
+            PointerWrapMode::Unsafe => heap_state.array_pointer + x,
+            PointerWrapMode::WrapAround => (heap_state.array_pointer + x) % heap_state.array.len(),
+            PointerWrapMode::Stick => heap_state.array.len() - 1,
+        }
+    }
+}
+
+fn decrement_instruction<T: InterpreterArgs>(heap_state: &mut HeapState, args: &T, x: usize){
+    if heap_state.array_pointer >= x {
+        heap_state.array_pointer -= x
+    }else {
+        heap_state.array_pointer = match args.get_pointer_wrap_mode() {
+            PointerWrapMode::Crash => {
+                eprintln!("pointer overflow"); process::exit(1);
+            },
+            PointerWrapMode::Unsafe => heap_state.array_pointer - x,
+            PointerWrapMode::WrapAround => {
+                (heap_state.array.len() - x % heap_state.array.len() + heap_state.array_pointer) % heap_state.array.len()
+            },
+            PointerWrapMode::Stick => 0,
+        }
+    }
+}
+
+fn byte_increment_instruction(heap_state: &mut HeapState, x: usize){
+    heap_state.array[heap_state.array_pointer] = heap_state.array[heap_state.array_pointer].wrapping_add((x % 256) as u8);
+}
+
+fn byte_decrement_instruction(heap_state: &mut HeapState, x: usize){
+    heap_state.array[heap_state.array_pointer] = heap_state.array[heap_state.array_pointer].wrapping_sub((x % 256) as u8);
+}
+
+fn byte_input_instruction<T: InterpreterArgs>(heap_state: &mut HeapState, args: &T){
+    match args.get_input_method() {
+        InputMethod::Normal => {
+            while heap_state.input_queue.len() == 0 {
+                let mut input = String::new();
+                io::stdin().read_line(&mut input).expect("error: unable to read user input");
+                heap_state.input_queue = input.into_bytes().iter().rev().map(|x| newline_zero_func(*x, args.get_newline_zero())).collect();
+            }
+            heap_state.array[heap_state.array_pointer] = heap_state.input_queue.pop().unwrap();
+        },
+        InputMethod::FirstCharOnly => {
+            let mut input = String::new();
+            io::stdin().read_line(&mut input).expect("error: unable to read user input");
+            let input = input.chars().map(|x| newline_zero_func(x as u8, args.get_newline_zero())).next().unwrap() as u8;
+            heap_state.array[heap_state.array_pointer] = input;
+        },
+        InputMethod::ByteAsNumber => {
+            let mut input = String::new();
+            io::stdin().read_line(&mut input).expect("error: unable to read user input");
+            let input = input[0..input.len() - 1].parse().expect("error: unable to parse user input into a single byte");
+            let input = newline_zero_func(input, args.get_newline_zero());
+            heap_state.array[heap_state.array_pointer] = input;
+        },
+    };
+}
+
+fn byte_output_instruction<T: InterpreterArgs>(heap_state: &mut HeapState, args: &T, mut writer: impl std::io::Write){
+    match args.get_output_method(){
+        OutputMethod::Normal => {
+            write!(writer, "{}", newline_zero_func(heap_state.array[heap_state.array_pointer], args.get_newline_zero()) as char).unwrap();
+            io::stdout().flush().unwrap();
+        },
+        OutputMethod::ByteAsNumber => {
+            writeln!(writer, "{}", newline_zero_func(heap_state.array[heap_state.array_pointer], args.get_newline_zero())).unwrap();
+        },
+    }
+}
+
+fn open_loop_instruction(heap_state: &mut HeapState, close_loop_index: usize){
+    if heap_state.array[heap_state.array_pointer] == 0 {
+        heap_state.instruction_pointer = close_loop_index
+    }
+}
+
+fn close_loop_instruction(heap_state: &mut HeapState, open_loop_index: usize){
+    if heap_state.array[heap_state.array_pointer] != 0{
+        heap_state.instruction_pointer = open_loop_index
+    }
 }
 
 pub fn interpreter<T: InterpreterArgs>(instructions: Vec<Instruction>, args: &T, mut writer: impl std::io::Write) -> Vec<u8> {
-    let input_method = args.get_input_method();
-    let output_method = args.get_output_method();
-    let newline_zero = args.get_newline_zero();
     let max_array_size = args.get_max_array_size();
-    let pointer_wrap_mode = args.get_pointer_wrap_mode();
     
-    let newline_zero_func = if newline_zero {newline_zero_map} else {useless_map};
+    let mut heap_state = HeapState::new(vec![0; max_array_size.unwrap_or(1) as usize], 0, 0, vec![]);
 
-    let mut array: Vec<u8> = vec![0];
-    if let Some(max_array_size) = max_array_size {
-        array = vec![0; max_array_size as usize];
-    }
-    let mut array_pointer = 0;
-    let mut instruction_pointer = 0;
-    let mut input_queue = vec![];
-
-    while instruction_pointer < instructions.len(){
-        match instructions[instruction_pointer] {
-            Instruction::PointerIncrement(x) => {
-                if max_array_size.is_none() {
-                    while array.len() <= array_pointer + x {
-                        array.push(0);
-                    }
-                    array_pointer += x;
-                }else {
-                    array_pointer = match pointer_wrap_mode {
-                        PointerWrapMode::Crash => {
-                            if array_pointer + x >= array.len(){
-                                eprintln!("pointer overflow"); process::exit(1);
-                            }else {
-                                array_pointer + x
-                            }
-                            
-                        },
-                        PointerWrapMode::Unsafe => array_pointer + x,
-                        PointerWrapMode::WrapAround => (array_pointer + x) % array.len(),
-                        PointerWrapMode::Stick => array.len() - 1,
-                    }
-                }
-            },
-            Instruction::PointerDecrement(x) => {
-                if array_pointer >= x {
-                    array_pointer -= x
-                }else {
-                    array_pointer = match pointer_wrap_mode {
-                        PointerWrapMode::Crash => {
-                            eprintln!("pointer overflow"); process::exit(1);
-                        },
-                        PointerWrapMode::Unsafe => array_pointer - x,
-                        PointerWrapMode::WrapAround => (array_pointer + array.len() * 2 - x) % array.len(),
-                        PointerWrapMode::Stick => 0,
-                    }
-                }
-            },
-            Instruction::ByteIncrement(x) => array[array_pointer] = array[array_pointer].wrapping_add((x % 256) as u8),
-            Instruction::ByteDecrement(x) => array[array_pointer] = array[array_pointer].wrapping_sub((x % 256) as u8),
-            Instruction::ByteInput => {
-                match input_method {
-                    InputMethod::Normal => {
-                        while input_queue.len() == 0 {
-                            let mut input = String::new();
-                            io::stdin().read_line(&mut input).expect("error: unable to read user input");
-                            input_queue = input.into_bytes().iter().rev().map(|x| newline_zero_func(*x)).collect();
-                        }
-                        array[array_pointer] = input_queue.pop().unwrap();
-                    },
-                    InputMethod::FirstCharOnly => {
-                        let mut input = String::new();
-                        io::stdin().read_line(&mut input).expect("error: unable to read user input");
-                        let input = input.chars().map(|x| newline_zero_func(x as u8)).next().unwrap() as u8;
-                        array[array_pointer] = input;
-                    },
-                    InputMethod::ByteAsNumber => {
-                        let mut input = String::new();
-                        io::stdin().read_line(&mut input).expect("error: unable to read user input");
-                        let input = input[0..input.len() - 1].parse().expect("error: unable to parse user input into a single byte");
-                        let input = newline_zero_func(input);
-                        array[array_pointer] = input;
-                    },
-                };
-            },
-            Instruction::ByteOutput => match output_method{
-                OutputMethod::Normal => {
-                    let _ = write!(writer, "{}", newline_zero_func(array[array_pointer]) as char);
-                    io::stdout().flush().unwrap();
-                },
-                OutputMethod::ByteAsNumber => {
-                    let _ = writeln!(writer, "{}", newline_zero_func(array[array_pointer]));
-                },
-            },
-            Instruction::OpenLoop(close_loop_index) => if array[array_pointer] == 0{instruction_pointer = close_loop_index},
-            Instruction::CloseLoop(open_loop_index) => if array[array_pointer] != 0{instruction_pointer = open_loop_index},
+    while heap_state.instruction_pointer < instructions.len(){
+        match instructions[heap_state.instruction_pointer] {
+            Instruction::PointerIncrement(x) => increment_instruction(&mut heap_state, args, x),
+            Instruction::PointerDecrement(x) => decrement_instruction(&mut heap_state, args, x),
+            Instruction::ByteIncrement(x) => byte_increment_instruction(&mut heap_state, x),
+            Instruction::ByteDecrement(x) => byte_decrement_instruction(&mut heap_state, x),
+            Instruction::ByteInput => byte_input_instruction(&mut heap_state, args),
+            Instruction::ByteOutput => byte_output_instruction(&mut heap_state, args, &mut writer),
+            Instruction::OpenLoop(close_loop_index) => open_loop_instruction(&mut heap_state, close_loop_index),
+            Instruction::CloseLoop(open_loop_index) => close_loop_instruction(&mut heap_state, open_loop_index),
         }
 
-        instruction_pointer += 1;
+        heap_state.instruction_pointer += 1;
     }
 
-    array
+    heap_state.array
 }
 
 #[cfg(test)]
