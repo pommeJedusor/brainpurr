@@ -1,6 +1,6 @@
 use std::{fs::{self, File}, hash::{DefaultHasher, Hash, Hasher}, io::Write, ops::Add, process::Command};
 
-use crate::{InputMethod, OutputMethod, args::{CompilerArgs, PointerWrapMode}, parser::Instruction};
+use crate::{args::{InputMethod, OutputMethod, CompilerArgs, PointerWrapMode}, parser::Instruction};
 
 
 fn get_pointer_increment_instruction(pointer_wrap_mode: &PointerWrapMode, x: usize, array_length: u32) -> String {

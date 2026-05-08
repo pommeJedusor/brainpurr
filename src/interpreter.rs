@@ -1,6 +1,6 @@
 use std::{io::{self, Write}, process};
 
-use crate::{InputMethod, OutputMethod, args::{InterpreterArgs, PointerWrapMode}, parser::Instruction};
+use crate::{args::{InputMethod, OutputMethod, InterpreterArgs, PointerWrapMode}, parser::Instruction};
 
 fn newline_zero_map(char: u8) -> u8{
     match char{

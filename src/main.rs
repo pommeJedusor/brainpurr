@@ -4,7 +4,7 @@ mod interpreter;
 mod parser;
 mod bf_parser;
 
-use crate::{interpreter::*, args::*};
+use crate::{interpreter::interpreter, args::Args};
 use clap::{Parser};
 
 
