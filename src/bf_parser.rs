@@ -11,6 +11,7 @@ pub fn parse_file(file_path: &PathBuf) -> Vec<Instruction> {
     parse(&content)
 }
 
+// TODO add optimization to bf_parser
 pub fn parse(program: &str) -> Vec<Instruction> {
     let instructions_words = program.chars().filter(|x| INSTRUCTIONS.contains(x));
 

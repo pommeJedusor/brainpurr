@@ -84,7 +84,7 @@ pub fn compile_to_file<T: CompilerArgs>(instructions: &Vec<Instruction>, args: &
     let input_method = args.get_input_method();
     let output_method = args.get_output_method();
     let gcc_args = args.get_gcc_args().unwrap_or("".to_string());
-    let gcc_args = gcc_args.split(" ").filter(|x| x != &"").collect::<Vec<&str>>();
+    let mut gcc_args = gcc_args.split(" ").filter(|x| x != &"").collect::<Vec<&str>>();
 
     let c_code = compile_to_c(instructions, args);
 
@@ -92,7 +92,6 @@ pub fn compile_to_file<T: CompilerArgs>(instructions: &Vec<Instruction>, args: &
     (instructions, max_array_size, input_method, output_method, &gcc_args).hash(&mut hasher);
     let c_file_name = format!("temp-{}.c", hasher.finish());
 
-    let mut gcc_args = gcc_args.clone();
     gcc_args.insert(0, &c_file_name);
 
     let mut file = File::create(&c_file_name).expect("failed to create temporary file for compiling");
