@@ -97,10 +97,10 @@ pub fn parse_file(file_path: &PathBuf) -> Vec<Instruction> {
     parse(&content)
 }
 
-pub fn parse(program: &str) -> Vec<Instruction> {
+fn get_instructions(program: &str) -> Vec<Instruction> {
     let instructions_words = program.split_whitespace().filter(|x| INSTRUCTIONS.contains(x));
 
-    let instructions = instructions_words.map(|instruction_word| match instruction_word {
+    instructions_words.map(|instruction_word| match instruction_word {
         "meow" => Instruction::PointerIncrement(1),
         "mrow" => Instruction::PointerDecrement(1),
         "mrp" => Instruction::ByteIncrement(1),
@@ -110,8 +110,10 @@ pub fn parse(program: &str) -> Vec<Instruction> {
         "nya" => Instruction::OpenLoop(0),
         ":3" => Instruction::CloseLoop(0),
         _ => unreachable!(),
-    }).collect::<Vec<Instruction>>();
+    }).collect::<Vec<Instruction>>()
+}
 
+pub fn fix_instructions(instructions: Vec<Instruction>) -> Vec<Instruction> {
     let mut instructions = optimize_instructions(instructions);
 
     let mut open_brackets = vec![];
@@ -135,6 +137,10 @@ pub fn parse(program: &str) -> Vec<Instruction> {
     }
 
     instructions
+}
+
+pub fn parse(program: &str) -> Vec<Instruction> {
+    fix_instructions(get_instructions(program))
 }
 
 pub fn unparse(instructions: Vec<Instruction>) -> String{

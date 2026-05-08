@@ -1,6 +1,6 @@
 use std::{fs, path::PathBuf};
 
-use crate::parser::Instruction;
+use crate::parser::{Instruction, fix_instructions};
 
 const INSTRUCTIONS: [char; 8] = ['>', '<', '+', '-', '.', ',', '[', ']'];
 
@@ -11,38 +11,24 @@ pub fn parse_file(file_path: &PathBuf) -> Vec<Instruction> {
     parse(&content)
 }
 
-// TODO add optimization to bf_parser
-pub fn parse(program: &str) -> Vec<Instruction> {
+fn get_instructions(program: &str) -> Vec<Instruction> {
     let instructions_words = program.chars().filter(|x| INSTRUCTIONS.contains(x));
 
-    let mut open_brackets = vec![];
-    let mut close_brackets = vec![];
-    let mut instructions = instructions_words.enumerate().map(|(index, instruction_word)| match instruction_word {
+    instructions_words.map(|instruction_word| match instruction_word {
         '>' => Instruction::PointerIncrement(1),
         '<' => Instruction::PointerDecrement(1),
         '+' => Instruction::ByteIncrement(1),
         '-' => Instruction::ByteDecrement(1),
         '.' => Instruction::ByteOutput,
         ',' => Instruction::ByteInput,
-        '[' => {
-            open_brackets.push(index);
-            Instruction::OpenLoop(0)
-        },
-        ']' => {
-            let open_bracket_index = open_brackets.pop().expect("found a ] without its required [");
-            close_brackets.push((open_bracket_index, index));
-            Instruction::CloseLoop(open_bracket_index)
-        },
+        '[' => Instruction::OpenLoop(0),
+        ']' => Instruction::CloseLoop(0),
         _ => unreachable!(),
-    }).collect::<Vec<Instruction>>();
+    }).collect::<Vec<Instruction>>()
+}
 
-    assert!(open_brackets.len() == 0, "found a [ without its required ]");
-
-    for (open_bracket_index, close_bracket_index) in close_brackets {
-        instructions[open_bracket_index] = Instruction::OpenLoop(close_bracket_index);
-    }
-
-    instructions
+pub fn parse(program: &str) -> Vec<Instruction> {
+    fix_instructions(get_instructions(program))
 }
 
 pub fn unparse(instructions: Vec<Instruction>) -> String{
@@ -64,7 +50,7 @@ mod tests {
 
     #[test]
     fn parsing(){
-        assert_eq!(parse("><+-.,[]"), vec![Instruction::PointerIncrement(1), Instruction::PointerDecrement(1), Instruction::ByteIncrement(1), Instruction::ByteDecrement(1), Instruction::ByteOutput, Instruction::ByteInput, Instruction::OpenLoop(7), Instruction::CloseLoop(6)]);
+        assert_eq!(parse(">+<-.,[]"), vec![Instruction::PointerIncrement(1), Instruction::ByteIncrement(1), Instruction::PointerDecrement(1), Instruction::ByteDecrement(1), Instruction::ByteOutput, Instruction::ByteInput, Instruction::OpenLoop(7), Instruction::CloseLoop(6)]);
     }
 
     #[test]
