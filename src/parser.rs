@@ -16,8 +16,7 @@ pub enum Instruction {
 
 fn optimize_instructions_pointer(mut instructions: Vec<Instruction>) -> Vec<Instruction> {
     let mut pointer_crement = instructions.iter().enumerate().filter(|(_, x)| match x {
-        Instruction::PointerIncrement(_) => true,
-        Instruction::PointerDecrement(_) => true,
+        Instruction::PointerIncrement(_) | Instruction::PointerDecrement(_) => true,
         _ => false,
     }).map(|(i, x)| (i, match x {
         Instruction::PointerIncrement(x) => *x as i32,
@@ -31,6 +30,7 @@ fn optimize_instructions_pointer(mut instructions: Vec<Instruction>) -> Vec<Inst
             pointer_crement[i - 1].1 = 0;
         }
     }
+
     pointer_crement
         .iter()
         .for_each(|(i, x)| instructions[*i] = match x {
@@ -40,10 +40,10 @@ fn optimize_instructions_pointer(mut instructions: Vec<Instruction>) -> Vec<Inst
 
     instructions
 }
+
 fn optimize_instructions_byte(mut instructions: Vec<Instruction>) -> Vec<Instruction> {
     let mut byte_crement = instructions.iter().enumerate().filter(|(_, x)| match x {
-        Instruction::ByteIncrement(_) => true,
-        Instruction::ByteDecrement(_) => true,
+        Instruction::ByteIncrement(_) | Instruction::ByteDecrement(_) => true,
         _ => false,
     }).map(|(i, x)| (i, match x {
         Instruction::ByteIncrement(x) => *x as i32,
@@ -75,10 +75,8 @@ pub fn optimize_instructions(mut instructions: Vec<Instruction>) -> Vec<Instruct
         instructions = optimize_instructions_byte(optimize_instructions_pointer(instructions))
             .iter()
             .filter(|x| match x {
-                Instruction::ByteIncrement(0) => false,
-                Instruction::ByteDecrement(0) => false,
-                Instruction::PointerIncrement(0) => false,
-                Instruction::PointerDecrement(0) => false,
+                Instruction::ByteIncrement(0) | Instruction::ByteDecrement(0) => false,
+                Instruction::PointerIncrement(0) | Instruction::PointerDecrement(0) => false,
                 _ => true,
             }).map(|x| x.to_owned()).collect();
 
