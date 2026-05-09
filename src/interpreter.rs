@@ -502,8 +502,7 @@ mod tests {
     #[test]
     fn input_normal_mode() {
         let mut cmd = Command::cargo_bin("brainpurr").unwrap();
-        let _ = cmd
-            .args(["./examples/echo.bp"])
+        cmd.args(["./examples/echo.bp"])
             .write_stdin("pomme is cute\n")
             .assert()
             .code(0)
@@ -513,8 +512,7 @@ mod tests {
     #[test]
     fn input_first_char_only_mode() {
         let mut cmd = Command::cargo_bin("brainpurr").unwrap();
-        let _ = cmd
-            .args(["./examples/echo.bp", "--input", "first-char-only"])
+        cmd.args(["./examples/echo.bp", "--input", "first-char-only"])
             .write_stdin(
                 "pomme is cute\n"
                     .chars()
@@ -530,8 +528,7 @@ mod tests {
     #[test]
     fn input_byte_as_number_mode() {
         let mut cmd = Command::cargo_bin("brainpurr").unwrap();
-        let _ = cmd
-            .args(["./examples/echo.bp", "--input", "byte-as-number"])
+        cmd.args(["./examples/echo.bp", "--input", "byte-as-number"])
             .write_stdin(
                 "pomme is cute\n"
                     .chars()
