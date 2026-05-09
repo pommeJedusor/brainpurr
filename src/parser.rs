@@ -18,9 +18,11 @@ fn optimize_instructions_pointer(mut instructions: Vec<Instruction>) -> Vec<Inst
     let mut pointer_crement = instructions
         .iter()
         .enumerate()
-        .filter(|(_, x)| match x {
-            Instruction::PointerIncrement(_) | Instruction::PointerDecrement(_) => true,
-            _ => false,
+        .filter(|(_, x)| {
+            matches!(
+                x,
+                Instruction::PointerIncrement(_) | Instruction::PointerDecrement(_)
+            )
         })
         .map(|(i, x)| {
             (
@@ -55,9 +57,11 @@ fn optimize_instructions_byte(mut instructions: Vec<Instruction>) -> Vec<Instruc
     let mut byte_crement = instructions
         .iter()
         .enumerate()
-        .filter(|(_, x)| match x {
-            Instruction::ByteIncrement(_) | Instruction::ByteDecrement(_) => true,
-            _ => false,
+        .filter(|(_, x)| {
+            matches!(
+                x,
+                Instruction::ByteIncrement(_) | Instruction::ByteDecrement(_)
+            )
         })
         .map(|(i, x)| {
             (
@@ -94,10 +98,14 @@ pub fn optimize_instructions(mut instructions: Vec<Instruction>) -> Vec<Instruct
     loop {
         instructions = optimize_instructions_byte(optimize_instructions_pointer(instructions))
             .iter()
-            .filter(|x| match x {
-                Instruction::ByteIncrement(0) | Instruction::ByteDecrement(0) => false,
-                Instruction::PointerIncrement(0) | Instruction::PointerDecrement(0) => false,
-                _ => true,
+            .filter(|x| {
+                !matches!(
+                    x,
+                    Instruction::ByteIncrement(0)
+                        | Instruction::ByteDecrement(0)
+                        | Instruction::PointerIncrement(0)
+                        | Instruction::PointerDecrement(0)
+                )
             })
             .map(|x| x.to_owned())
             .collect();
@@ -156,7 +164,7 @@ pub fn fix_instructions(instructions: Vec<Instruction>) -> Vec<Instruction> {
     }
 
     assert!(
-        open_brackets.len() == 0,
+        open_brackets.is_empty(),
         "found a nya without its required :3"
     );
 

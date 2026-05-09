@@ -93,7 +93,7 @@ fn byte_decrement_instruction(heap_state: &mut HeapState, x: usize) {
 fn byte_input_instruction<T: InterpreterArgs>(heap_state: &mut HeapState, args: &T) {
     match args.get_input_method() {
         InputMethod::Normal => {
-            while heap_state.input_queue.len() == 0 {
+            while heap_state.input_queue.is_empty() {
                 let mut input = String::new();
                 io::stdin()
                     .read_line(&mut input)
@@ -116,7 +116,7 @@ fn byte_input_instruction<T: InterpreterArgs>(heap_state: &mut HeapState, args: 
                 .chars()
                 .map(|x| newline_zero_func(x as u8, args.get_newline_zero()))
                 .next()
-                .unwrap() as u8;
+                .unwrap();
             heap_state.array[heap_state.array_pointer] = input;
         }
         InputMethod::ByteAsNumber => {
@@ -398,7 +398,7 @@ mod tests {
     #[test]
     fn pointer_decrement_underflow() {
         let mut cmd = Command::cargo_bin("brainpurr").unwrap();
-        cmd.args(&["./examples/tests/pointer_decrement_underflow_wrap_around.bp"])
+        cmd.args(["./examples/tests/pointer_decrement_underflow_wrap_around.bp"])
             .write_stdin("")
             .assert()
             .stdout("\0")
@@ -409,7 +409,7 @@ mod tests {
     #[test]
     fn pointer_decrement_underflow_wrap_around() {
         let mut cmd = Command::cargo_bin("brainpurr").unwrap();
-        cmd.args(&[
+        cmd.args([
             "./examples/tests/pointer_decrement_underflow_wrap_around.bp",
             "--pointer-wrap",
             "wrap-around",
@@ -424,7 +424,7 @@ mod tests {
     #[test]
     fn pointer_decrement_underflow_wrap_around_stick() {
         let mut cmd = Command::cargo_bin("brainpurr").unwrap();
-        cmd.args(&[
+        cmd.args([
             "./examples/tests/pointer_decrement_underflow_wrap_around.bp",
             "--pointer-wrap",
             "stick",
@@ -439,7 +439,7 @@ mod tests {
     #[test]
     fn pointer_decrement_underflow_wrap_around_crash() {
         let mut cmd = Command::cargo_bin("brainpurr").unwrap();
-        cmd.args(&[
+        cmd.args([
             "./examples/tests/pointer_decrement_underflow_wrap_around.bp",
             "--pointer-wrap",
             "crash",
@@ -455,7 +455,7 @@ mod tests {
     #[test]
     fn pointer_increment_overflow_wrap_around() {
         let mut cmd = Command::cargo_bin("brainpurr").unwrap();
-        cmd.args(&[
+        cmd.args([
             "./examples/tests/pointer_increment_overflow_wrap_around.bp",
             "--pointer-wrap",
             "wrap-around",
@@ -470,7 +470,7 @@ mod tests {
     #[test]
     fn pointer_increment_overflow_wrap_around_stick() {
         let mut cmd = Command::cargo_bin("brainpurr").unwrap();
-        cmd.args(&[
+        cmd.args([
             "./examples/tests/pointer_increment_overflow_wrap_around.bp",
             "--pointer-wrap",
             "stick",
@@ -485,7 +485,7 @@ mod tests {
     #[test]
     fn pointer_increment_overflow_wrap_around_crash() {
         let mut cmd = Command::cargo_bin("brainpurr").unwrap();
-        cmd.args(&[
+        cmd.args([
             "./examples/tests/pointer_increment_overflow_wrap_around.bp",
             "--pointer-wrap",
             "crash",
@@ -503,7 +503,7 @@ mod tests {
     fn input_normal_mode() {
         let mut cmd = Command::cargo_bin("brainpurr").unwrap();
         let _ = cmd
-            .args(&["./examples/echo.bp"])
+            .args(["./examples/echo.bp"])
             .write_stdin("pomme is cute\n")
             .assert()
             .code(0)
@@ -514,7 +514,7 @@ mod tests {
     fn input_first_char_only_mode() {
         let mut cmd = Command::cargo_bin("brainpurr").unwrap();
         let _ = cmd
-            .args(&["./examples/echo.bp", "--input", "first-char-only"])
+            .args(["./examples/echo.bp", "--input", "first-char-only"])
             .write_stdin(
                 "pomme is cute\n"
                     .chars()
@@ -531,7 +531,7 @@ mod tests {
     fn input_byte_as_number_mode() {
         let mut cmd = Command::cargo_bin("brainpurr").unwrap();
         let _ = cmd
-            .args(&["./examples/echo.bp", "--input", "byte-as-number"])
+            .args(["./examples/echo.bp", "--input", "byte-as-number"])
             .write_stdin(
                 "pomme is cute\n"
                     .chars()
@@ -570,7 +570,7 @@ mod tests {
             PointerWrapMode::Crash,
         );
         interpreter(instructions, &args, &mut result);
-        assert_eq!(result, vec!['6' as u8, '7' as u8, '\n' as u8])
+        assert_eq!(result, vec![b'6', b'7', b'\n'])
     }
 
     #[test]
@@ -600,14 +600,14 @@ mod tests {
     fn newline_zero() {
         // normal mode for both
         let mut cmd = Command::cargo_bin("brainpurr").unwrap();
-        cmd.args(&["./examples/tests/newline_zero.bp", "--newline-zero"])
+        cmd.args(["./examples/tests/newline_zero.bp", "--newline-zero"])
             .write_stdin("\n\0")
             .assert()
             .code(0)
             .stdout("\n\0\n\0");
         // byte-as-number for both
         let mut cmd = Command::cargo_bin("brainpurr").unwrap();
-        cmd.args(&[
+        cmd.args([
             "./examples/tests/newline_zero.bp",
             "--newline-zero",
             "--input",
@@ -621,7 +621,7 @@ mod tests {
         .stdout("10\n0\n10\n0\n");
         // first-char-only mode for input
         let mut cmd = Command::cargo_bin("brainpurr").unwrap();
-        cmd.args(&[
+        cmd.args([
             "./examples/tests/newline_zero.bp",
             "--newline-zero",
             "--input",
@@ -636,7 +636,7 @@ mod tests {
     #[test]
     fn max_array_size_border() {
         let mut cmd = Command::cargo_bin("brainpurr").unwrap();
-        cmd.args(&[
+        cmd.args([
             "./examples/tests/max_array_size_border.bp",
             "--max-array-size",
             "10",
@@ -649,7 +649,7 @@ mod tests {
     #[test]
     fn max_array_size_overflow() {
         let mut cmd = Command::cargo_bin("brainpurr").unwrap();
-        cmd.args(&[
+        cmd.args([
             "./examples/tests/max_array_size_border.bp",
             "--max-array-size",
             "9",
