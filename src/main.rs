@@ -1,12 +1,11 @@
 mod args;
+mod bf_parser;
 mod compiler;
 mod interpreter;
 mod parser;
-mod bf_parser;
 
-use crate::{interpreter::interpreter, args::Args};
-use clap::{Parser};
-
+use crate::{args::Args, interpreter::interpreter};
+use clap::Parser;
 
 fn main() {
     let args = Args::parse();

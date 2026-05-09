@@ -1,23 +1,51 @@
-use std::{fs::{self, File}, hash::{DefaultHasher, Hash, Hasher}, io::Write, ops::Add, process::Command};
+use std::{
+    fs::{self, File},
+    hash::{DefaultHasher, Hash, Hasher},
+    io::Write,
+    ops::Add,
+    process::Command,
+};
 
-use crate::{args::{InputMethod, OutputMethod, CompilerArgs, PointerWrapMode}, parser::Instruction};
+use crate::{
+    args::{CompilerArgs, InputMethod, OutputMethod, PointerWrapMode},
+    parser::Instruction,
+};
 
-
-fn get_pointer_increment_instruction(pointer_wrap_mode: &PointerWrapMode, x: usize, array_length: u32) -> String {
+fn get_pointer_increment_instruction(
+    pointer_wrap_mode: &PointerWrapMode,
+    x: usize,
+    array_length: u32,
+) -> String {
     match pointer_wrap_mode {
-        PointerWrapMode::Crash => format!("if (pointer >= ARRAY_LENGTH - {}){{\nfprintf(stderr, \"pointer overflow\\n\");\nreturn 1;\n}}\npointer += {};", x, x),
+        PointerWrapMode::Crash => format!(
+            "if (pointer >= ARRAY_LENGTH - {}){{\nfprintf(stderr, \"pointer overflow\\n\");\nreturn 1;\n}}\npointer += {};",
+            x, x
+        ),
         PointerWrapMode::Unsafe => format!("pointer += {};", x),
         PointerWrapMode::WrapAround => format!("pointer = (pointer + {}) % {};", x, array_length),
-        PointerWrapMode::Stick => format!("if (pointer + {} >= ARRAY_LENGTH - 1){{\npointer = ARRAY_LENGTH - 1;\n}}\nelse{{\npointer += {};\n}}", x, x),
+        PointerWrapMode::Stick => format!(
+            "if (pointer + {} >= ARRAY_LENGTH - 1){{\npointer = ARRAY_LENGTH - 1;\n}}\nelse{{\npointer += {};\n}}",
+            x, x
+        ),
     }
 }
 
-fn get_pointer_decrement_instruction(pointer_wrap_mode: &PointerWrapMode, x: usize, array_length: u32) -> String {
+fn get_pointer_decrement_instruction(
+    pointer_wrap_mode: &PointerWrapMode,
+    x: usize,
+    array_length: u32,
+) -> String {
     match pointer_wrap_mode {
-        PointerWrapMode::Crash => format!("if (pointer < {x}){{\nfprintf(stderr, \"pointer underflow\\n\");\nreturn 1;\n}}\npointer -= {x};"),
+        PointerWrapMode::Crash => format!(
+            "if (pointer < {x}){{\nfprintf(stderr, \"pointer underflow\\n\");\nreturn 1;\n}}\npointer -= {x};"
+        ),
         PointerWrapMode::Unsafe => format!("pointer -= {x};"),
-        PointerWrapMode::WrapAround => format!("pointer = (pointer + {array_length} - ({x} % {array_length})) % {array_length};"),
-        PointerWrapMode::Stick => format!("if (pointer < {x}){{\npointer = 0;\n}}\nelse{{\npointer -= {x};\n}}"),
+        PointerWrapMode::WrapAround => format!(
+            "pointer = (pointer + {array_length} - ({x} % {array_length})) % {array_length};"
+        ),
+        PointerWrapMode::Stick => {
+            format!("if (pointer < {x}){{\npointer = 0;\n}}\nelse{{\npointer -= {x};\n}}")
+        }
     }
 }
 
@@ -30,15 +58,26 @@ fn get_byte_decrement_instruction(x: usize) -> String {
 }
 
 fn get_input_instruction(input_method: &InputMethod, newline_zero: bool) -> String {
-    let newline_zero_input_instruction = match newline_zero{
-        true => "if (array[pointer] == 10){\narray[pointer] = 0;\n}else if (array[pointer] == 0){\narray[pointer] = 10;\n}",
+    let newline_zero_input_instruction = match newline_zero {
+        true => {
+            "if (array[pointer] == 10){\narray[pointer] = 0;\n}else if (array[pointer] == 0){\narray[pointer] = 10;\n}"
+        }
         false => "",
     };
 
     match input_method {
-       InputMethod::Normal => format!("scanf(\"%c\", &array[pointer]);\n{}", newline_zero_input_instruction),
-       InputMethod::FirstCharOnly => format!("while (1){{\nfgets(input, INPUT_LENGTH, stdin);\nif (is_first_char_found == 0){{\nfirst_char = input[0];\nis_first_char_found = 1;\n}}\nif (input[0] == 10){{\nbreak;\n}}\n}}\narray[pointer] = first_char;\nis_first_char_found = 0;\n{}", newline_zero_input_instruction),
-       InputMethod::ByteAsNumber => format!("scanf(\"%d\", &array[pointer]);\n{}", newline_zero_input_instruction),
+        InputMethod::Normal => format!(
+            "scanf(\"%c\", &array[pointer]);\n{}",
+            newline_zero_input_instruction
+        ),
+        InputMethod::FirstCharOnly => format!(
+            "while (1){{\nfgets(input, INPUT_LENGTH, stdin);\nif (is_first_char_found == 0){{\nfirst_char = input[0];\nis_first_char_found = 1;\n}}\nif (input[0] == 10){{\nbreak;\n}}\n}}\narray[pointer] = first_char;\nis_first_char_found = 0;\n{}",
+            newline_zero_input_instruction
+        ),
+        InputMethod::ByteAsNumber => format!(
+            "scanf(\"%d\", &array[pointer]);\n{}",
+            newline_zero_input_instruction
+        ),
     }
 }
 
@@ -60,41 +99,69 @@ pub fn compile_to_c<T: CompilerArgs>(instructions: &Vec<Instruction>, args: &T) 
     let pointer_wrap_mode = args.get_pointer_wrap_mode();
 
     let c_file = "#include <stdio.h>\n".to_string();
-    let c_file = c_file.add(&format!("const unsigned long ARRAY_LENGTH = {};\nconst int INPUT_LENGTH = 2;\n", max_array_size));
+    let c_file = c_file.add(&format!(
+        "const unsigned long ARRAY_LENGTH = {};\nconst int INPUT_LENGTH = 2;\n",
+        max_array_size
+    ));
     let c_file = c_file.add("int main(){\nchar array[ARRAY_LENGTH];\nchar input[INPUT_LENGTH];\nchar first_char = 0;\nchar is_first_char_found = 0;\nfor (int i=0;i<ARRAY_LENGTH;i++){\narray[i] = 0;\n}\nunsigned long pointer = 0;\n");
 
-    let c_file = c_file.add(&instructions.iter().map(|x| match x{
-        Instruction::PointerIncrement(x) => get_pointer_increment_instruction(&pointer_wrap_mode, *x, max_array_size),
-        Instruction::PointerDecrement(x) => get_pointer_decrement_instruction(&pointer_wrap_mode, *x, max_array_size),
-        Instruction::ByteIncrement(x) => get_byte_increment_instruction(*x),
-        Instruction::ByteDecrement(x) => get_byte_decrement_instruction(*x),
-        Instruction::ByteInput => get_input_instruction(args.get_input_method(), args.get_newline_zero()),
-        Instruction::ByteOutput => get_output_instruction(args.get_output_method(), args.get_newline_zero()),
-        Instruction::OpenLoop(_) => "while (array[pointer] != 0){".to_string(),
-        Instruction::CloseLoop(_) => "}".to_string(),
-    }).collect::<Vec<String>>().join("\n"));
+    let c_file = c_file.add(
+        &instructions
+            .iter()
+            .map(|x| match x {
+                Instruction::PointerIncrement(x) => {
+                    get_pointer_increment_instruction(&pointer_wrap_mode, *x, max_array_size)
+                }
+                Instruction::PointerDecrement(x) => {
+                    get_pointer_decrement_instruction(&pointer_wrap_mode, *x, max_array_size)
+                }
+                Instruction::ByteIncrement(x) => get_byte_increment_instruction(*x),
+                Instruction::ByteDecrement(x) => get_byte_decrement_instruction(*x),
+                Instruction::ByteInput => {
+                    get_input_instruction(args.get_input_method(), args.get_newline_zero())
+                }
+                Instruction::ByteOutput => {
+                    get_output_instruction(args.get_output_method(), args.get_newline_zero())
+                }
+                Instruction::OpenLoop(_) => "while (array[pointer] != 0){".to_string(),
+                Instruction::CloseLoop(_) => "}".to_string(),
+            })
+            .collect::<Vec<String>>()
+            .join("\n"),
+    );
 
     let c_file = c_file.add("\nreturn 0;\n}");
 
     c_file
 }
 
-pub fn compile_to_file<T: CompilerArgs>(instructions: &Vec<Instruction>, args: &T){
+pub fn compile_to_file<T: CompilerArgs>(instructions: &Vec<Instruction>, args: &T) {
     let max_array_size = args.get_max_array_size();
     let input_method = args.get_input_method();
     let output_method = args.get_output_method();
     let gcc_args = args.get_gcc_args().unwrap_or("".to_string());
-    let mut gcc_args = gcc_args.split(" ").filter(|x| x != &"").collect::<Vec<&str>>();
+    let mut gcc_args = gcc_args
+        .split(" ")
+        .filter(|x| x != &"")
+        .collect::<Vec<&str>>();
 
     let c_code = compile_to_c(instructions, args);
 
     let mut hasher = DefaultHasher::new();
-    (instructions, max_array_size, input_method, output_method, &gcc_args).hash(&mut hasher);
+    (
+        instructions,
+        max_array_size,
+        input_method,
+        output_method,
+        &gcc_args,
+    )
+        .hash(&mut hasher);
     let c_file_name = format!("temp-{}.c", hasher.finish());
 
     gcc_args.insert(0, &c_file_name);
 
-    let mut file = File::create(&c_file_name).expect("failed to create temporary file for compiling");
+    let mut file =
+        File::create(&c_file_name).expect("failed to create temporary file for compiling");
     write!(file, "{}", c_code).unwrap();
     let result = Command::new("gcc")
         .args(&gcc_args)
@@ -108,24 +175,21 @@ pub fn compile_to_file<T: CompilerArgs>(instructions: &Vec<Instruction>, args: &
 #[cfg(test)]
 mod tests {
     use super::*;
-    use assert_cmd::{Command};
+    use assert_cmd::Command;
 
-    fn compile(exe_name: &str, args: &Vec<&str>){
+    fn compile(exe_name: &str, args: &Vec<&str>) {
         let mut args = args.clone();
         let gcc_args = &format!("-o {exe_name}");
         args.push("--compile");
         args.push("--gcc-args");
         args.push(&gcc_args);
         let mut cmd = Command::cargo_bin("brainpurr").unwrap();
-        cmd
-            .args(args)
-            .assert()
-            .code(0);
+        cmd.args(args).assert().code(0);
     }
 
     // mrp
     #[test]
-    fn increment(){
+    fn increment() {
         let exe_name = "./increment.out";
         compile(exe_name, &vec!["./examples/tests/increment.bp"]);
         Command::new(exe_name)
@@ -137,7 +201,7 @@ mod tests {
         fs::remove_file(exe_name).unwrap();
     }
     #[test]
-    fn byte_overflow(){
+    fn byte_overflow() {
         let exe_name = "./byte_overflow.out";
         compile(exe_name, &vec!["./examples/tests/byte_overflow.bp"]);
         Command::new(exe_name)
@@ -149,9 +213,16 @@ mod tests {
         fs::remove_file(exe_name).unwrap();
     }
     #[test]
-    fn increment_overflow(){
+    fn increment_overflow() {
         let exe_name = "./increment_overflow.out";
-        compile(exe_name, &vec!["./examples/tests/increment_overflow.bp", "--output", "byte-as-number"]);
+        compile(
+            exe_name,
+            &vec![
+                "./examples/tests/increment_overflow.bp",
+                "--output",
+                "byte-as-number",
+            ],
+        );
         Command::new(exe_name)
             .write_stdin("")
             .assert()
@@ -163,7 +234,7 @@ mod tests {
 
     // purr
     #[test]
-    fn decrement(){
+    fn decrement() {
         let exe_name = "./decrement.out";
         compile(exe_name, &vec!["./examples/tests/decrement.bp"]);
         Command::new(exe_name)
@@ -175,7 +246,7 @@ mod tests {
         fs::remove_file(exe_name).unwrap();
     }
     #[test]
-    fn byte_underflow(){
+    fn byte_underflow() {
         let exe_name = "./byte_underflow.out";
         compile(exe_name, &vec!["./examples/tests/byte_underflow.bp"]);
         Command::new(exe_name)
@@ -187,9 +258,16 @@ mod tests {
         fs::remove_file(exe_name).unwrap();
     }
     #[test]
-    fn decrement_overflow(){
+    fn decrement_overflow() {
         let exe_name = "./decrement_overflow.out";
-        compile(exe_name, &vec!["./examples/tests/decrement_overflow.bp", "--output", "byte-as-number"]);
+        compile(
+            exe_name,
+            &vec![
+                "./examples/tests/decrement_overflow.bp",
+                "--output",
+                "byte-as-number",
+            ],
+        );
         Command::new(exe_name)
             .write_stdin("")
             .assert()
@@ -201,7 +279,7 @@ mod tests {
 
     // meow
     #[test]
-    fn pointer_increment(){
+    fn pointer_increment() {
         let exe_name = "./pointer_increment.out";
         compile(exe_name, &vec!["./examples/tests/pointer_increment.bp"]);
         Command::new(exe_name)
@@ -213,7 +291,7 @@ mod tests {
         fs::remove_file(exe_name).unwrap();
     }
     #[test]
-    fn pointer_overflow(){
+    fn pointer_overflow() {
         let exe_name = "./pointer_overflow.out";
         compile(exe_name, &vec!["./examples/tests/pointer_overflow.bp"]);
         Command::new(exe_name)
@@ -226,9 +304,18 @@ mod tests {
     }
     // PointerWrapMode
     #[test]
-    fn pointer_increment_overflow_wrap_around(){
+    fn pointer_increment_overflow_wrap_around() {
         let exe_name = "./pointer_increment_overflow_wrap_around.out";
-        compile(exe_name, &vec!["./examples/tests/pointer_increment_overflow_wrap_around.bp", "--pointer-wrap", "wrap-around", "--max-array-size", "2"]);
+        compile(
+            exe_name,
+            &vec![
+                "./examples/tests/pointer_increment_overflow_wrap_around.bp",
+                "--pointer-wrap",
+                "wrap-around",
+                "--max-array-size",
+                "2",
+            ],
+        );
         Command::new(exe_name)
             .write_stdin("")
             .assert()
@@ -238,9 +325,18 @@ mod tests {
         fs::remove_file(exe_name).unwrap();
     }
     #[test]
-    fn pointer_increment_overflow_wrap_around_stick(){
+    fn pointer_increment_overflow_wrap_around_stick() {
         let exe_name = "./pointer_increment_overflow_wrap_around_stick.out";
-        compile(exe_name, &vec!["./examples/tests/pointer_increment_overflow_wrap_around.bp", "--pointer-wrap", "stick", "--max-array-size", "2"]);
+        compile(
+            exe_name,
+            &vec![
+                "./examples/tests/pointer_increment_overflow_wrap_around.bp",
+                "--pointer-wrap",
+                "stick",
+                "--max-array-size",
+                "2",
+            ],
+        );
         Command::new(exe_name)
             .write_stdin("")
             .assert()
@@ -250,9 +346,18 @@ mod tests {
         fs::remove_file(exe_name).unwrap();
     }
     #[test]
-    fn pointer_increment_overflow_wrap_around_crash(){
+    fn pointer_increment_overflow_wrap_around_crash() {
         let exe_name = "./pointer_increment_overflow_wrap_around_crash.out";
-        compile(exe_name, &vec!["./examples/tests/pointer_increment_overflow_wrap_around.bp", "--pointer-wrap", "crash", "--max-array-size", "2"]);
+        compile(
+            exe_name,
+            &vec![
+                "./examples/tests/pointer_increment_overflow_wrap_around.bp",
+                "--pointer-wrap",
+                "crash",
+                "--max-array-size",
+                "2",
+            ],
+        );
         Command::new(exe_name)
             .write_stdin("")
             .assert()
@@ -264,7 +369,7 @@ mod tests {
 
     // mrow
     #[test]
-    fn pointer_decrement(){
+    fn pointer_decrement() {
         let exe_name = "./pointer_decrement.out";
         compile(exe_name, &vec!["./examples/tests/pointer_decrement.bp"]);
         Command::new(exe_name)
@@ -276,7 +381,7 @@ mod tests {
         fs::remove_file(exe_name).unwrap();
     }
     #[test]
-    fn pointer_underflow(){
+    fn pointer_underflow() {
         let exe_name = "./pointer_underflow.out";
         compile(exe_name, &vec!["./examples/tests/pointer_underflow.bp"]);
         Command::new(exe_name)
@@ -289,9 +394,18 @@ mod tests {
     }
     // PointerWrapMode
     #[test]
-    fn pointer_decrement_underflow_wrap_around(){
+    fn pointer_decrement_underflow_wrap_around() {
         let exe_name = "./pointer_decrement_underflow_wrap_around.out";
-        compile(exe_name, &vec!["./examples/tests/pointer_decrement_underflow_wrap_around.bp", "--pointer-wrap", "wrap-around", "--max-array-size", "2"]);
+        compile(
+            exe_name,
+            &vec![
+                "./examples/tests/pointer_decrement_underflow_wrap_around.bp",
+                "--pointer-wrap",
+                "wrap-around",
+                "--max-array-size",
+                "2",
+            ],
+        );
         Command::new(exe_name)
             .write_stdin("")
             .assert()
@@ -301,9 +415,18 @@ mod tests {
         fs::remove_file(exe_name).unwrap();
     }
     #[test]
-    fn pointer_decrement_underflow_wrap_around_stick(){
+    fn pointer_decrement_underflow_wrap_around_stick() {
         let exe_name = "./pointer_decrement_underflow_wrap_around_stick.out";
-        compile(exe_name, &vec!["./examples/tests/pointer_decrement_underflow_wrap_around.bp", "--pointer-wrap", "stick", "--max-array-size", "2"]);
+        compile(
+            exe_name,
+            &vec![
+                "./examples/tests/pointer_decrement_underflow_wrap_around.bp",
+                "--pointer-wrap",
+                "stick",
+                "--max-array-size",
+                "2",
+            ],
+        );
         Command::new(exe_name)
             .write_stdin("")
             .assert()
@@ -313,9 +436,18 @@ mod tests {
         fs::remove_file(exe_name).unwrap();
     }
     #[test]
-    fn pointer_decrement_underflow_wrap_around_crash(){
+    fn pointer_decrement_underflow_wrap_around_crash() {
         let exe_name = "./pointer_decrement_underflow_wrap_around_crash.out";
-        compile(exe_name, &vec!["./examples/tests/pointer_decrement_underflow_wrap_around.bp", "--pointer-wrap", "crash", "--max-array-size", "2"]);
+        compile(
+            exe_name,
+            &vec![
+                "./examples/tests/pointer_decrement_underflow_wrap_around.bp",
+                "--pointer-wrap",
+                "crash",
+                "--max-array-size",
+                "2",
+            ],
+        );
         Command::new(exe_name)
             .write_stdin("")
             .assert()
@@ -327,7 +459,7 @@ mod tests {
 
     // >:3
     #[test]
-    fn input(){
+    fn input() {
         let exe_name = "./input.out";
         compile(exe_name, &vec!["./examples/tests/input.bp"]);
         Command::new(exe_name)
@@ -339,7 +471,7 @@ mod tests {
         fs::remove_file(exe_name).unwrap();
     }
     #[test]
-    fn input_normal_mode(){
+    fn input_normal_mode() {
         let exe_name = "./input_normal_mode.out";
         compile(exe_name, &vec!["./examples/echo.bp"]);
         Command::new(exe_name)
@@ -351,11 +483,20 @@ mod tests {
         fs::remove_file(exe_name).unwrap();
     }
     #[test]
-    fn input_first_char_only(){
+    fn input_first_char_only() {
         let exe_name = "./input_first_char_only.out";
-        compile(exe_name, &vec!["./examples/echo.bp", "--input", "first-char-only"]);
+        compile(
+            exe_name,
+            &vec!["./examples/echo.bp", "--input", "first-char-only"],
+        );
         Command::new(exe_name)
-            .write_stdin("pomme is cute\n".chars().map(|x| x.to_string()).collect::<Vec<String>>().join("\n"))
+            .write_stdin(
+                "pomme is cute\n"
+                    .chars()
+                    .map(|x| x.to_string())
+                    .collect::<Vec<String>>()
+                    .join("\n"),
+            )
             .assert()
             .success()
             .code(0)
@@ -363,11 +504,19 @@ mod tests {
         fs::remove_file(exe_name).unwrap();
     }
     #[test]
-    fn input_byte_as_number(){
+    fn input_byte_as_number() {
         let exe_name = "./input_byte_as_number.out";
-        compile(exe_name, &vec!["./examples/echo.bp", "--input", "byte-as-number"]);
+        compile(
+            exe_name,
+            &vec!["./examples/echo.bp", "--input", "byte-as-number"],
+        );
         Command::new(exe_name)
-            .write_stdin("pomme is cute\n".chars().map(|x| format!("{}\n", x as u8)).collect::<String>())
+            .write_stdin(
+                "pomme is cute\n"
+                    .chars()
+                    .map(|x| format!("{}\n", x as u8))
+                    .collect::<String>(),
+            )
             .assert()
             .success()
             .code(0)
@@ -375,9 +524,12 @@ mod tests {
         fs::remove_file(exe_name).unwrap();
     }
     #[test]
-    fn input_length_overflow(){
+    fn input_length_overflow() {
         let exe_name = "./input_length_overflow.out";
-        compile(exe_name, &vec!["./examples/echo.bp", "--input", "first-char-only"]);
+        compile(
+            exe_name,
+            &vec!["./examples/echo.bp", "--input", "first-char-only"],
+        );
         Command::new(exe_name)
             .write_stdin("ppppppppp\no\n\0\n\n")
             .assert()
@@ -387,10 +539,9 @@ mod tests {
         fs::remove_file(exe_name).unwrap();
     }
 
-
     // :3c
     #[test]
-    fn output(){
+    fn output() {
         let exe_name = "./output.out";
         compile(exe_name, &vec!["./examples/tests/output.bp"]);
         Command::new(exe_name)
@@ -402,7 +553,7 @@ mod tests {
         fs::remove_file(exe_name).unwrap();
     }
     #[test]
-    fn output_normal_mode(){
+    fn output_normal_mode() {
         let exe_name = "./output_normal_mode.out";
         compile(exe_name, &vec!["./examples/echo.bp", "--output", "normal"]);
         Command::new(exe_name)
@@ -414,9 +565,12 @@ mod tests {
         fs::remove_file(exe_name).unwrap();
     }
     #[test]
-    fn output_byte_as_number(){
+    fn output_byte_as_number() {
         let exe_name = "./output_byte_as_number.out";
-        compile(exe_name, &vec!["./examples/echo.bp", "--output", "byte-as-number"]);
+        compile(
+            exe_name,
+            &vec!["./examples/echo.bp", "--output", "byte-as-number"],
+        );
         Command::new(exe_name)
             .write_stdin("C\n")
             .assert()
@@ -428,7 +582,7 @@ mod tests {
 
     // nya :3
     #[test]
-    fn useless_loop(){
+    fn useless_loop() {
         let exe_name = "./useless_loop.out";
         compile(exe_name, &vec!["./examples/tests/useless_loop.bp"]);
         Command::new(exe_name)
@@ -440,7 +594,7 @@ mod tests {
         fs::remove_file(exe_name).unwrap();
     }
     #[test]
-    fn useful_loop(){
+    fn useful_loop() {
         let exe_name = "./useful_loop.out";
         compile(exe_name, &vec!["./examples/tests/useful_loop.bp"]);
         Command::new(exe_name)
@@ -454,9 +608,16 @@ mod tests {
 
     // max array size
     #[test]
-    fn max_array_size_border(){
+    fn max_array_size_border() {
         let exe_name = "./max_array_size_border.out";
-        compile(exe_name, &vec!["./examples/tests/max_array_size_border.bp", "--max-array-size", "10"]);
+        compile(
+            exe_name,
+            &vec![
+                "./examples/tests/max_array_size_border.bp",
+                "--max-array-size",
+                "10",
+            ],
+        );
         Command::new(exe_name)
             .write_stdin("")
             .assert()
@@ -466,9 +627,16 @@ mod tests {
         fs::remove_file(exe_name).unwrap();
     }
     #[test]
-    fn max_array_size_overflow(){
+    fn max_array_size_overflow() {
         let exe_name = "./max_array_size_overflow.out";
-        compile(exe_name, &vec!["./examples/tests/max_array_size_border.bp", "--max-array-size", "9"]);
+        compile(
+            exe_name,
+            &vec![
+                "./examples/tests/max_array_size_border.bp",
+                "--max-array-size",
+                "9",
+            ],
+        );
         Command::new(exe_name)
             .write_stdin("")
             .assert()
@@ -478,9 +646,16 @@ mod tests {
         fs::remove_file(exe_name).unwrap();
     }
     #[test]
-    fn array_empty(){
+    fn array_empty() {
         let exe_name = "./array_empty.out";
-        compile(exe_name, &vec!["./examples/tests/array_empty.bp", "--max-array-size", "1000000"]);
+        compile(
+            exe_name,
+            &vec![
+                "./examples/tests/array_empty.bp",
+                "--max-array-size",
+                "1000000",
+            ],
+        );
         Command::new(exe_name)
             .write_stdin("")
             .assert()
@@ -492,10 +667,20 @@ mod tests {
 
     // newline zero
     #[test]
-    fn newline_zero_normal_mode(){
+    fn newline_zero_normal_mode() {
         // normal mode for both input and output
         let exe_name = "./newline_zero_normal_mode.out";
-        compile(exe_name, &vec!["./examples/tests/newline_zero.bp", "--newline-zero", "--input", "normal", "--output", "normal"]);
+        compile(
+            exe_name,
+            &vec![
+                "./examples/tests/newline_zero.bp",
+                "--newline-zero",
+                "--input",
+                "normal",
+                "--output",
+                "normal",
+            ],
+        );
         Command::new(exe_name)
             .write_stdin("\n\0")
             .assert()
@@ -505,10 +690,20 @@ mod tests {
         fs::remove_file(exe_name).unwrap();
     }
     #[test]
-    fn newline_zero_byte_as_number(){
+    fn newline_zero_byte_as_number() {
         // byte-as-number for both input and output
         let exe_name = "./newline_zero_byte_as_number.out";
-        compile(exe_name, &vec!["./examples/tests/newline_zero.bp", "--newline-zero", "--input", "byte-as-number", "--output", "byte-as-number"]);
+        compile(
+            exe_name,
+            &vec![
+                "./examples/tests/newline_zero.bp",
+                "--newline-zero",
+                "--input",
+                "byte-as-number",
+                "--output",
+                "byte-as-number",
+            ],
+        );
         Command::new(exe_name)
             .write_stdin("10\n0\n")
             .assert()
@@ -518,10 +713,18 @@ mod tests {
         fs::remove_file(exe_name).unwrap();
     }
     #[test]
-    fn newline_zero_first_char_only(){
+    fn newline_zero_first_char_only() {
         // first-char-only mode for input and normal mode for output
         let exe_name = "./newline_zero_first_char_only.out";
-        compile(exe_name, &vec!["./examples/tests/newline_zero.bp", "--newline-zero", "--input", "first-char-only"]);
+        compile(
+            exe_name,
+            &vec![
+                "./examples/tests/newline_zero.bp",
+                "--newline-zero",
+                "--input",
+                "first-char-only",
+            ],
+        );
         Command::new(exe_name)
             .write_stdin("\n\0\n")
             .assert()

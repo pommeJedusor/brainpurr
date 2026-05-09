@@ -15,55 +15,75 @@ pub enum Instruction {
 }
 
 fn optimize_instructions_pointer(mut instructions: Vec<Instruction>) -> Vec<Instruction> {
-    let mut pointer_crement = instructions.iter().enumerate().filter(|(_, x)| match x {
-        Instruction::PointerIncrement(_) | Instruction::PointerDecrement(_) => true,
-        _ => false,
-    }).map(|(i, x)| (i, match x {
-        Instruction::PointerIncrement(x) => *x as i32,
-        Instruction::PointerDecrement(x) => -(*x as i32),
-        _ => unreachable!(),
-    })).collect::<Vec<(usize, i32)>>();
+    let mut pointer_crement = instructions
+        .iter()
+        .enumerate()
+        .filter(|(_, x)| match x {
+            Instruction::PointerIncrement(_) | Instruction::PointerDecrement(_) => true,
+            _ => false,
+        })
+        .map(|(i, x)| {
+            (
+                i,
+                match x {
+                    Instruction::PointerIncrement(x) => *x as i32,
+                    Instruction::PointerDecrement(x) => -(*x as i32),
+                    _ => unreachable!(),
+                },
+            )
+        })
+        .collect::<Vec<(usize, i32)>>();
 
-    for i in 0..pointer_crement.len(){
+    for i in 0..pointer_crement.len() {
         if i != 0 && pointer_crement[i - 1].0 + 1 == pointer_crement[i].0 {
             pointer_crement[i].1 += pointer_crement[i - 1].1;
             pointer_crement[i - 1].1 = 0;
         }
     }
 
-    pointer_crement
-        .iter()
-        .for_each(|(i, x)| instructions[*i] = match x {
+    pointer_crement.iter().for_each(|(i, x)| {
+        instructions[*i] = match x {
             0.. => Instruction::PointerIncrement(*x as usize),
             ..0 => Instruction::PointerDecrement(-*x as usize),
-        });
+        }
+    });
 
     instructions
 }
 
 fn optimize_instructions_byte(mut instructions: Vec<Instruction>) -> Vec<Instruction> {
-    let mut byte_crement = instructions.iter().enumerate().filter(|(_, x)| match x {
-        Instruction::ByteIncrement(_) | Instruction::ByteDecrement(_) => true,
-        _ => false,
-    }).map(|(i, x)| (i, match x {
-        Instruction::ByteIncrement(x) => *x as i32,
-        Instruction::ByteDecrement(x) => -(*x as i32),
-        _ => unreachable!(),
-    })).collect::<Vec<(usize, i32)>>();
+    let mut byte_crement = instructions
+        .iter()
+        .enumerate()
+        .filter(|(_, x)| match x {
+            Instruction::ByteIncrement(_) | Instruction::ByteDecrement(_) => true,
+            _ => false,
+        })
+        .map(|(i, x)| {
+            (
+                i,
+                match x {
+                    Instruction::ByteIncrement(x) => *x as i32,
+                    Instruction::ByteDecrement(x) => -(*x as i32),
+                    _ => unreachable!(),
+                },
+            )
+        })
+        .collect::<Vec<(usize, i32)>>();
 
-    for i in 0..byte_crement.len(){
+    for i in 0..byte_crement.len() {
         if i != 0 && byte_crement[i - 1].0 + 1 == byte_crement[i].0 {
             byte_crement[i].1 += byte_crement[i - 1].1;
             byte_crement[i - 1].1 = 0;
         }
     }
 
-    byte_crement
-        .iter()
-        .for_each(|(i, x)| instructions[*i] = match x {
+    byte_crement.iter().for_each(|(i, x)| {
+        instructions[*i] = match x {
             0.. => Instruction::ByteIncrement(*x as usize),
             ..0 => Instruction::ByteDecrement(-*x as usize),
-        });
+        }
+    });
 
     instructions
 }
@@ -78,37 +98,41 @@ pub fn optimize_instructions(mut instructions: Vec<Instruction>) -> Vec<Instruct
                 Instruction::ByteIncrement(0) | Instruction::ByteDecrement(0) => false,
                 Instruction::PointerIncrement(0) | Instruction::PointerDecrement(0) => false,
                 _ => true,
-            }).map(|x| x.to_owned()).collect();
+            })
+            .map(|x| x.to_owned())
+            .collect();
 
-        if instructions.len() == pre_optimization_length{
+        if instructions.len() == pre_optimization_length {
             return instructions;
-        }else {
+        } else {
             pre_optimization_length = instructions.len();
         }
     }
 }
 
-
 pub fn parse_file(file_path: &PathBuf) -> Vec<Instruction> {
-    let content = fs::read_to_string(file_path)
-        .expect("failed to read file");
+    let content = fs::read_to_string(file_path).expect("failed to read file");
     parse(&content)
 }
 
 fn get_instructions(program: &str) -> Vec<Instruction> {
-    let instructions_words = program.split_whitespace().filter(|x| INSTRUCTIONS.contains(x));
+    let instructions_words = program
+        .split_whitespace()
+        .filter(|x| INSTRUCTIONS.contains(x));
 
-    instructions_words.map(|instruction_word| match instruction_word {
-        "meow" => Instruction::PointerIncrement(1),
-        "mrow" => Instruction::PointerDecrement(1),
-        "mrp" => Instruction::ByteIncrement(1),
-        "purr" => Instruction::ByteDecrement(1),
-        ":3c" => Instruction::ByteOutput,
-        ">:3" => Instruction::ByteInput,
-        "nya" => Instruction::OpenLoop(0),
-        ":3" => Instruction::CloseLoop(0),
-        _ => unreachable!(),
-    }).collect::<Vec<Instruction>>()
+    instructions_words
+        .map(|instruction_word| match instruction_word {
+            "meow" => Instruction::PointerIncrement(1),
+            "mrow" => Instruction::PointerDecrement(1),
+            "mrp" => Instruction::ByteIncrement(1),
+            "purr" => Instruction::ByteDecrement(1),
+            ":3c" => Instruction::ByteOutput,
+            ">:3" => Instruction::ByteInput,
+            "nya" => Instruction::OpenLoop(0),
+            ":3" => Instruction::CloseLoop(0),
+            _ => unreachable!(),
+        })
+        .collect::<Vec<Instruction>>()
 }
 
 pub fn fix_instructions(instructions: Vec<Instruction>) -> Vec<Instruction> {
@@ -116,18 +140,25 @@ pub fn fix_instructions(instructions: Vec<Instruction>) -> Vec<Instruction> {
 
     let mut open_brackets = vec![];
     let mut close_brackets = vec![];
-    for (i, instruction) in instructions.iter().enumerate(){
-        match instruction{
-            Instruction::OpenLoop(_) => { open_brackets.push(i); },
+    for (i, instruction) in instructions.iter().enumerate() {
+        match instruction {
+            Instruction::OpenLoop(_) => {
+                open_brackets.push(i);
+            }
             Instruction::CloseLoop(_) => {
-                let open_bracket_index = open_brackets.pop().expect("found a :3 without its required nya");
+                let open_bracket_index = open_brackets
+                    .pop()
+                    .expect("found a :3 without its required nya");
                 close_brackets.push((open_bracket_index, i));
-            },
-            _ => {},
+            }
+            _ => {}
         };
     }
 
-    assert!(open_brackets.len() == 0, "found a nya without its required :3");
+    assert!(
+        open_brackets.len() == 0,
+        "found a nya without its required :3"
+    );
 
     for (open_bracket_index, close_bracket_index) in close_brackets {
         instructions[open_bracket_index] = Instruction::OpenLoop(close_bracket_index);
@@ -141,17 +172,21 @@ pub fn parse(program: &str) -> Vec<Instruction> {
     fix_instructions(get_instructions(program))
 }
 
-pub fn unparse(instructions: Vec<Instruction>) -> String{
-    instructions.iter().map(|instruction| match instruction{
-        Instruction::PointerIncrement(x) => vec!["meow"; *x].join(" "),
-        Instruction::PointerDecrement(x) => vec!["mrow"; *x].join(" "),
-        Instruction::ByteIncrement(x) => vec!["mrp"; *x].join(" "),
-        Instruction::ByteDecrement(x) => vec!["purr"; *x].join(" "),
-        Instruction::ByteOutput => ":3c".to_string(),
-        Instruction::ByteInput => ">:3".to_string(),
-        Instruction::OpenLoop(_) => "nya".to_string(),
-        Instruction::CloseLoop(_) => ":3".to_string(),
-    }).collect::<Vec<String>>().join(" ")
+pub fn unparse(instructions: Vec<Instruction>) -> String {
+    instructions
+        .iter()
+        .map(|instruction| match instruction {
+            Instruction::PointerIncrement(x) => vec!["meow"; *x].join(" "),
+            Instruction::PointerDecrement(x) => vec!["mrow"; *x].join(" "),
+            Instruction::ByteIncrement(x) => vec!["mrp"; *x].join(" "),
+            Instruction::ByteDecrement(x) => vec!["purr"; *x].join(" "),
+            Instruction::ByteOutput => ":3c".to_string(),
+            Instruction::ByteInput => ">:3".to_string(),
+            Instruction::OpenLoop(_) => "nya".to_string(),
+            Instruction::CloseLoop(_) => ":3".to_string(),
+        })
+        .collect::<Vec<String>>()
+        .join(" ")
 }
 
 #[cfg(test)]
@@ -159,29 +194,56 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parsing(){
-        assert_eq!(parse("meow mrp mrow purr :3c >:3 nya :3"), vec![Instruction::PointerIncrement(1), Instruction::ByteIncrement(1), Instruction::PointerDecrement(1), Instruction::ByteDecrement(1),  Instruction::ByteOutput, Instruction::ByteInput, Instruction::OpenLoop(7), Instruction::CloseLoop(6)]);
+    fn parsing() {
+        assert_eq!(
+            parse("meow mrp mrow purr :3c >:3 nya :3"),
+            vec![
+                Instruction::PointerIncrement(1),
+                Instruction::ByteIncrement(1),
+                Instruction::PointerDecrement(1),
+                Instruction::ByteDecrement(1),
+                Instruction::ByteOutput,
+                Instruction::ByteInput,
+                Instruction::OpenLoop(7),
+                Instruction::CloseLoop(6)
+            ]
+        );
     }
 
     #[test]
-    fn unparsing(){
-        assert_eq!(unparse(vec![Instruction::PointerIncrement(1), Instruction::PointerDecrement(1), Instruction::ByteIncrement(1), Instruction::ByteDecrement(1), Instruction::ByteOutput, Instruction::ByteInput, Instruction::OpenLoop(7), Instruction::CloseLoop(6)]), "meow mrow mrp purr :3c >:3 nya :3");
+    fn unparsing() {
+        assert_eq!(
+            unparse(vec![
+                Instruction::PointerIncrement(1),
+                Instruction::PointerDecrement(1),
+                Instruction::ByteIncrement(1),
+                Instruction::ByteDecrement(1),
+                Instruction::ByteOutput,
+                Instruction::ByteInput,
+                Instruction::OpenLoop(7),
+                Instruction::CloseLoop(6)
+            ]),
+            "meow mrow mrp purr :3c >:3 nya :3"
+        );
     }
 
     #[test]
     #[should_panic]
-    fn too_many_open_loop(){
+    fn too_many_open_loop() {
         parse("nya nya :3");
     }
 
     #[test]
     #[should_panic]
-    fn too_many_close_loop(){
+    fn too_many_close_loop() {
         parse("nya :3 :3");
     }
 
     #[test]
-    fn optimizations(){
-        assert_eq!(parse("meow mrp meow mrp meow mrp purr mrow purr mrow purr mrow"), vec![]);
+    fn optimizations() {
+        assert_eq!(
+            parse("meow mrp meow mrp meow mrp purr mrow purr mrow purr mrow"),
+            vec![]
+        );
     }
 }

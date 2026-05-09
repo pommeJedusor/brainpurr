@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use clap::{Parser};
+use clap::Parser;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -93,7 +93,7 @@ pub enum PointerWrapMode {
     Stick,
 }
 
-pub trait InterpreterArgs{
+pub trait InterpreterArgs {
     fn get_input_method(&self) -> &InputMethod;
     fn get_output_method(&self) -> &OutputMethod;
     fn get_newline_zero(&self) -> bool;
@@ -102,14 +102,24 @@ pub trait InterpreterArgs{
 }
 
 impl InterpreterArgs for Args {
-    fn get_input_method(&self) -> &InputMethod { &self.input }
-    fn get_output_method(&self) -> &OutputMethod { &self.output }
-    fn get_newline_zero(&self) -> bool { self.newline_zero }
-    fn get_max_array_size(&self) -> Option<u32> { self.max_array_size }
-    fn get_pointer_wrap_mode(&self) -> &PointerWrapMode { &self.pointer_wrap }
+    fn get_input_method(&self) -> &InputMethod {
+        &self.input
+    }
+    fn get_output_method(&self) -> &OutputMethod {
+        &self.output
+    }
+    fn get_newline_zero(&self) -> bool {
+        self.newline_zero
+    }
+    fn get_max_array_size(&self) -> Option<u32> {
+        self.max_array_size
+    }
+    fn get_pointer_wrap_mode(&self) -> &PointerWrapMode {
+        &self.pointer_wrap
+    }
 }
 
-pub trait CompilerArgs{
+pub trait CompilerArgs {
     fn get_input_method(&self) -> &InputMethod;
     fn get_output_method(&self) -> &OutputMethod;
     fn get_newline_zero(&self) -> bool;
@@ -119,10 +129,22 @@ pub trait CompilerArgs{
 }
 
 impl CompilerArgs for Args {
-    fn get_input_method(&self) -> &InputMethod { &self.input }
-    fn get_output_method(&self) -> &OutputMethod { &self.output }
-    fn get_newline_zero(&self) -> bool { self.newline_zero }
-    fn get_max_array_size(&self) -> u32 { self.max_array_size.unwrap_or(67000) }
-    fn get_gcc_args(&self) -> Option<String> { self.gcc_args.clone() }
-    fn get_pointer_wrap_mode(&self) -> &PointerWrapMode { &self.pointer_wrap }
+    fn get_input_method(&self) -> &InputMethod {
+        &self.input
+    }
+    fn get_output_method(&self) -> &OutputMethod {
+        &self.output
+    }
+    fn get_newline_zero(&self) -> bool {
+        self.newline_zero
+    }
+    fn get_max_array_size(&self) -> u32 {
+        self.max_array_size.unwrap_or(67000)
+    }
+    fn get_gcc_args(&self) -> Option<String> {
+        self.gcc_args.clone()
+    }
+    fn get_pointer_wrap_mode(&self) -> &PointerWrapMode {
+        &self.pointer_wrap
+    }
 }
