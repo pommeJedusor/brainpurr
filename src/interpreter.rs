@@ -424,6 +424,7 @@ mod tests {
         let mut cmd = Command::cargo_bin("brainpurr").unwrap();
         cmd.args(["./examples/tests/pointer_decrement_underflow_wrap_around.bp"])
             .write_stdin("")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .stdout("\0")
             .code(1)
@@ -441,6 +442,7 @@ mod tests {
             "2",
         ])
         .write_stdin("")
+        .timeout(std::time::Duration::from_secs(1))
         .assert()
         .stdout("\0\n")
         .success();
@@ -456,6 +458,7 @@ mod tests {
             "2",
         ])
         .write_stdin("")
+        .timeout(std::time::Duration::from_secs(1))
         .assert()
         .stdout("\0\0")
         .success();
@@ -471,6 +474,7 @@ mod tests {
             "2",
         ])
         .write_stdin("")
+        .timeout(std::time::Duration::from_secs(1))
         .assert()
         .stdout("\0")
         .failure()
@@ -487,6 +491,7 @@ mod tests {
             "2",
         ])
         .write_stdin("")
+        .timeout(std::time::Duration::from_secs(1))
         .assert()
         .stdout("\0\n")
         .success();
@@ -502,6 +507,7 @@ mod tests {
             "2",
         ])
         .write_stdin("")
+        .timeout(std::time::Duration::from_secs(1))
         .assert()
         .stdout("\0\0")
         .success();
@@ -517,6 +523,7 @@ mod tests {
             "2",
         ])
         .write_stdin("")
+        .timeout(std::time::Duration::from_secs(1))
         .assert()
         .stdout("\0")
         .failure()
@@ -528,6 +535,7 @@ mod tests {
         let mut cmd = Command::cargo_bin("brainpurr").unwrap();
         cmd.args(["./examples/echo.bp"])
             .write_stdin("pomme is cute\n")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .code(0)
             .stdout("pomme is cute\n");
@@ -544,6 +552,7 @@ mod tests {
                     .collect::<Vec<String>>()
                     .join("\n"),
             )
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .code(0)
             .stdout("pomme is cute\n");
@@ -559,6 +568,7 @@ mod tests {
                     .map(|x| format!("{}\n", x as u8))
                     .collect::<String>(),
             )
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .code(0)
             .stdout("pomme is cute\n");
@@ -623,6 +633,7 @@ mod tests {
         let mut cmd = Command::cargo_bin("brainpurr").unwrap();
         cmd.args(["./examples/tests/newline_zero.bp", "--newline-zero"])
             .write_stdin("\n\0")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .code(0)
             .stdout("\n\0\n\0");
@@ -637,6 +648,7 @@ mod tests {
             "byte-as-number",
         ])
         .write_stdin("10\n0\n")
+        .timeout(std::time::Duration::from_secs(1))
         .assert()
         .code(0)
         .stdout("10\n0\n10\n0\n");
@@ -649,6 +661,7 @@ mod tests {
             "first-char-only",
         ])
         .write_stdin("\n\0\n")
+        .timeout(std::time::Duration::from_secs(1))
         .assert()
         .code(0)
         .stdout("\n\0\n\0");
@@ -663,6 +676,7 @@ mod tests {
             "10",
         ])
         .write_stdin("")
+        .timeout(std::time::Duration::from_secs(1))
         .assert()
         .code(0)
         .stdout("");
@@ -676,6 +690,7 @@ mod tests {
             "9",
         ])
         .write_stdin("")
+        .timeout(std::time::Duration::from_secs(1))
         .assert()
         .stdout("")
         .code(1)

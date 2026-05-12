@@ -208,6 +208,7 @@ mod tests {
         compile(exe_name, &["./examples/tests/increment.bp"]);
         Command::new(exe_name)
             .write_stdin("")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .success()
             .code(0)
@@ -220,6 +221,7 @@ mod tests {
         compile(exe_name, &["./examples/tests/byte_overflow.bp"]);
         Command::new(exe_name)
             .write_stdin("")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .success()
             .code(0)
@@ -239,6 +241,7 @@ mod tests {
         );
         Command::new(exe_name)
             .write_stdin("")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .success()
             .code(0)
@@ -253,6 +256,7 @@ mod tests {
         compile(exe_name, &["./examples/tests/decrement.bp"]);
         Command::new(exe_name)
             .write_stdin("")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .success()
             .code(0)
@@ -265,6 +269,7 @@ mod tests {
         compile(exe_name, &["./examples/tests/byte_underflow.bp"]);
         Command::new(exe_name)
             .write_stdin("")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .success()
             .code(0)
@@ -284,6 +289,7 @@ mod tests {
         );
         Command::new(exe_name)
             .write_stdin("")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .success()
             .code(0)
@@ -298,6 +304,7 @@ mod tests {
         compile(exe_name, &["./examples/tests/pointer_increment.bp"]);
         Command::new(exe_name)
             .write_stdin("")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .success()
             .code(0)
@@ -310,6 +317,7 @@ mod tests {
         compile(exe_name, &["./examples/tests/pointer_overflow.bp"]);
         Command::new(exe_name)
             .write_stdin("")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .failure()
             .code(1)
@@ -332,6 +340,7 @@ mod tests {
         );
         Command::new(exe_name)
             .write_stdin("")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .success()
             .code(0)
@@ -353,6 +362,7 @@ mod tests {
         );
         Command::new(exe_name)
             .write_stdin("")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .success()
             .code(0)
@@ -374,6 +384,7 @@ mod tests {
         );
         Command::new(exe_name)
             .write_stdin("")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .failure()
             .code(1)
@@ -388,6 +399,7 @@ mod tests {
         compile(exe_name, &["./examples/tests/pointer_decrement.bp"]);
         Command::new(exe_name)
             .write_stdin("")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .success()
             .code(0)
@@ -400,6 +412,7 @@ mod tests {
         compile(exe_name, &["./examples/tests/pointer_underflow.bp"]);
         Command::new(exe_name)
             .write_stdin("")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .failure()
             .code(1)
@@ -422,6 +435,7 @@ mod tests {
         );
         Command::new(exe_name)
             .write_stdin("")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .success()
             .code(0)
@@ -443,6 +457,7 @@ mod tests {
         );
         Command::new(exe_name)
             .write_stdin("")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .success()
             .code(0)
@@ -464,6 +479,7 @@ mod tests {
         );
         Command::new(exe_name)
             .write_stdin("")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .failure()
             .code(1)
@@ -478,6 +494,7 @@ mod tests {
         compile(exe_name, &["./examples/tests/input.bp"]);
         Command::new(exe_name)
             .write_stdin("C")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .success()
             .code(0)
@@ -490,6 +507,7 @@ mod tests {
         compile(exe_name, &["./examples/echo.bp"]);
         Command::new(exe_name)
             .write_stdin("pomme is cute\n")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .success()
             .code(0)
@@ -511,6 +529,7 @@ mod tests {
                     .collect::<Vec<String>>()
                     .join("\n"),
             )
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .success()
             .code(0)
@@ -531,6 +550,7 @@ mod tests {
                     .map(|x| format!("{}\n", x as u8))
                     .collect::<String>(),
             )
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .success()
             .code(0)
@@ -546,6 +566,7 @@ mod tests {
         );
         Command::new(exe_name)
             .write_stdin("ppppppppp\no\n\0\n\n")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .success()
             .code(0)
@@ -560,6 +581,7 @@ mod tests {
         compile(exe_name, &["./examples/tests/output.bp"]);
         Command::new(exe_name)
             .write_stdin("")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .success()
             .code(0)
@@ -572,6 +594,7 @@ mod tests {
         compile(exe_name, &["./examples/echo.bp", "--output", "normal"]);
         Command::new(exe_name)
             .write_stdin("pomme is cute\n")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .success()
             .code(0)
@@ -587,6 +610,7 @@ mod tests {
         );
         Command::new(exe_name)
             .write_stdin("C\n")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .success()
             .code(0)
@@ -601,6 +625,7 @@ mod tests {
         compile(exe_name, &["./examples/tests/useless_loop.bp"]);
         Command::new(exe_name)
             .write_stdin("")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .success()
             .code(0)
@@ -613,6 +638,7 @@ mod tests {
         compile(exe_name, &["./examples/tests/useful_loop.bp"]);
         Command::new(exe_name)
             .write_stdin("")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .success()
             .code(0)
@@ -634,6 +660,7 @@ mod tests {
         );
         Command::new(exe_name)
             .write_stdin("")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .success()
             .code(0)
@@ -653,6 +680,7 @@ mod tests {
         );
         Command::new(exe_name)
             .write_stdin("")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .failure()
             .code(1)
@@ -672,6 +700,7 @@ mod tests {
         );
         Command::new(exe_name)
             .write_stdin("")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .failure()
             .code(1)
@@ -697,6 +726,7 @@ mod tests {
         );
         Command::new(exe_name)
             .write_stdin("\n\0")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .success()
             .code(0)
@@ -720,6 +750,7 @@ mod tests {
         );
         Command::new(exe_name)
             .write_stdin("10\n0\n")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .success()
             .code(0)
@@ -741,6 +772,7 @@ mod tests {
         );
         Command::new(exe_name)
             .write_stdin("\n\0\n")
+            .timeout(std::time::Duration::from_secs(1))
             .assert()
             .success()
             .code(0)
