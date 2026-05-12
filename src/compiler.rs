@@ -8,6 +8,7 @@ use std::{
 
 use crate::{
     args::{CompilerArgs, InputMethod, OutputMethod, PointerWrapMode},
+    error::BrainpurrError,
     parser::Instruction,
 };
 
@@ -133,7 +134,10 @@ pub fn compile_to_c<T: CompilerArgs>(instructions: &[Instruction], args: &T) -> 
     c_file.add("\nreturn 0;\n}")
 }
 
-pub fn compile_to_file<T: CompilerArgs>(instructions: &Vec<Instruction>, args: &T) {
+pub fn compile_to_file<T: CompilerArgs>(
+    instructions: &Vec<Instruction>,
+    args: &T,
+) -> Result<(), BrainpurrError> {
     let max_array_size = args.get_max_array_size();
     let input_method = args.get_input_method();
     let output_method = args.get_output_method();
@@ -158,16 +162,28 @@ pub fn compile_to_file<T: CompilerArgs>(instructions: &Vec<Instruction>, args: &
 
     gcc_args.insert(0, &c_file_name);
 
-    let mut file =
-        File::create(&c_file_name).expect("failed to create temporary file for compiling");
-    write!(file, "{}", c_code).unwrap();
-    let result = Command::new("gcc")
-        .args(&gcc_args)
-        .status()
-        .expect("failed to compile the code using gcc (gcc is required to run this command)");
+    let mut file = match File::create(&c_file_name) {
+        Ok(file) => file,
+        Err(err) => Err(BrainpurrError::CompilingError(format!(
+            "failed to create temporary file for compiling: {err}"
+        )))?,
+    };
+
+    if let Err(err) = write!(file, "{}", c_code) {
+        return Err(BrainpurrError::CompilingError(err.to_string()));
+    }
+    let result = match Command::new("gcc").args(&gcc_args).status() {
+        Ok(result) => result,
+        Err(err) => Err(BrainpurrError::CompilingError(err.to_string()))?,
+    };
     assert!(result.success());
 
-    fs::remove_file(&c_file_name).expect("failed to delete temporary file for compiling");
+    if let Err(err) = fs::remove_file(&c_file_name) {
+        return Err(BrainpurrError::CompilingError(format!(
+            "failed to delete temporary file for compiling: {err}"
+        )));
+    }
+    Ok(())
 }
 
 #[cfg(test)]

@@ -5,6 +5,7 @@ use std::{
 
 use crate::{
     args::{InputMethod, InterpreterArgs, OutputMethod, PointerWrapMode},
+    error::BrainpurrError,
     parser::Instruction,
 };
 
@@ -90,14 +91,17 @@ fn byte_decrement_instruction(heap_state: &mut HeapState, x: usize) {
         heap_state.array[heap_state.array_pointer].wrapping_sub((x % 256) as u8);
 }
 
-fn byte_input_instruction<T: InterpreterArgs>(heap_state: &mut HeapState, args: &T) {
+fn byte_input_instruction<T: InterpreterArgs>(
+    heap_state: &mut HeapState,
+    args: &T,
+) -> Result<(), BrainpurrError> {
     match args.get_input_method() {
         InputMethod::Normal => {
             while heap_state.input_queue.is_empty() {
                 let mut input = String::new();
-                io::stdin()
-                    .read_line(&mut input)
-                    .expect("error: unable to read user input");
+                if let Err(err) = io::stdin().read_line(&mut input) {
+                    return Err(BrainpurrError::UserInput(err.to_string()));
+                }
                 heap_state.input_queue = input
                     .into_bytes()
                     .iter()
@@ -105,64 +109,81 @@ fn byte_input_instruction<T: InterpreterArgs>(heap_state: &mut HeapState, args: 
                     .map(|x| newline_zero_func(*x, args.get_newline_zero()))
                     .collect();
             }
-            heap_state.array[heap_state.array_pointer] = heap_state.input_queue.pop().unwrap();
+
+            let input_byte = heap_state.input_queue.pop();
+            assert!(input_byte.is_some());
+            if let Some(input_byte) = input_byte {
+                heap_state.array[heap_state.array_pointer] = input_byte;
+            }
         }
         InputMethod::FirstCharOnly => {
             let mut input = String::new();
-            io::stdin()
-                .read_line(&mut input)
-                .expect("error: unable to read user input");
+            if let Err(err) = io::stdin().read_line(&mut input) {
+                return Err(BrainpurrError::UserInput(err.to_string()));
+            }
             let input = input
                 .chars()
                 .map(|x| newline_zero_func(x as u8, args.get_newline_zero()))
-                .next()
-                .unwrap();
-            heap_state.array[heap_state.array_pointer] = input;
+                .next();
+            assert!(input.is_some());
+
+            if let Some(input) = input {
+                heap_state.array[heap_state.array_pointer] = input;
+            }
         }
         InputMethod::ByteAsNumber => {
             let mut input = String::new();
-            io::stdin()
-                .read_line(&mut input)
-                .expect("error: unable to read user input");
-            let input = input[0..input.len() - 1]
-                .parse()
-                .expect("error: unable to parse user input into a single byte");
-            let input = newline_zero_func(input, args.get_newline_zero());
-            heap_state.array[heap_state.array_pointer] = input;
+            if let Err(err) = io::stdin().read_line(&mut input) {
+                return Err(BrainpurrError::UserInput(err.to_string()));
+            }
+            match input[0..input.len() - 1].parse() {
+                Ok(input) => {
+                    let input = newline_zero_func(input, args.get_newline_zero());
+                    heap_state.array[heap_state.array_pointer] = input;
+                }
+                Err(err) => return Err(BrainpurrError::UserInput(err.to_string())),
+            }
         }
     };
+    Ok(())
 }
 
 fn byte_output_instruction<T: InterpreterArgs>(
     heap_state: &mut HeapState,
     args: &T,
     mut writer: impl std::io::Write,
-) {
+) -> Result<(), BrainpurrError> {
     match args.get_output_method() {
         OutputMethod::Normal => {
-            write!(
+            if let Err(err) = write!(
                 writer,
                 "{}",
                 newline_zero_func(
                     heap_state.array[heap_state.array_pointer],
                     args.get_newline_zero()
                 ) as char
-            )
-            .unwrap();
-            io::stdout().flush().unwrap();
+            ) {
+                return Err(BrainpurrError::Output(err.to_string()));
+            }
+            if let Err(err) = io::stdout().flush() {
+                return Err(BrainpurrError::Output(err.to_string()));
+            }
         }
         OutputMethod::ByteAsNumber => {
-            writeln!(
+            if let Err(err) = writeln!(
                 writer,
                 "{}",
                 newline_zero_func(
                     heap_state.array[heap_state.array_pointer],
                     args.get_newline_zero()
                 )
-            )
-            .unwrap();
+            ) {
+                return Err(BrainpurrError::Output(err.to_string()));
+            }
         }
     }
+
+    Ok(())
 }
 
 fn open_loop_instruction(heap_state: &mut HeapState, close_loop_index: usize) {
@@ -181,7 +202,7 @@ pub fn interpreter<T: InterpreterArgs>(
     instructions: Vec<Instruction>,
     args: &T,
     mut writer: impl std::io::Write,
-) -> Vec<u8> {
+) -> Result<Vec<u8>, BrainpurrError> {
     let max_array_size = args.get_max_array_size();
 
     let mut heap_state =
@@ -193,8 +214,8 @@ pub fn interpreter<T: InterpreterArgs>(
             Instruction::PointerDecrement(x) => decrement_instruction(&mut heap_state, args, x),
             Instruction::ByteIncrement(x) => byte_increment_instruction(&mut heap_state, x),
             Instruction::ByteDecrement(x) => byte_decrement_instruction(&mut heap_state, x),
-            Instruction::ByteInput => byte_input_instruction(&mut heap_state, args),
-            Instruction::ByteOutput => byte_output_instruction(&mut heap_state, args, &mut writer),
+            Instruction::ByteInput => byte_input_instruction(&mut heap_state, args)?,
+            Instruction::ByteOutput => byte_output_instruction(&mut heap_state, args, &mut writer)?,
             Instruction::OpenLoop(close_loop_index) => {
                 open_loop_instruction(&mut heap_state, close_loop_index)
             }
@@ -206,7 +227,7 @@ pub fn interpreter<T: InterpreterArgs>(
         heap_state.instruction_pointer += 1;
     }
 
-    heap_state.array
+    Ok(heap_state.array)
 }
 
 #[cfg(test)]
@@ -268,7 +289,7 @@ mod tests {
             PointerWrapMode::Crash,
         );
         assert_eq!(
-            interpreter(vec![Instruction::ByteIncrement(1)], &args, &mut vec![]),
+            interpreter(vec![Instruction::ByteIncrement(1)], &args, &mut vec![]).unwrap(),
             vec![1]
         );
     }
@@ -283,7 +304,7 @@ mod tests {
             PointerWrapMode::Crash,
         );
         assert_eq!(
-            interpreter(vec![Instruction::ByteIncrement(1); 256], &args, &mut vec![]),
+            interpreter(vec![Instruction::ByteIncrement(1); 256], &args, &mut vec![]).unwrap(),
             vec![0]
         );
     }
@@ -297,7 +318,7 @@ mod tests {
             PointerWrapMode::Crash,
         );
         assert_eq!(
-            interpreter(vec![Instruction::ByteIncrement(256)], &args, &mut vec![]),
+            interpreter(vec![Instruction::ByteIncrement(256)], &args, &mut vec![]).unwrap(),
             vec![0]
         );
     }
@@ -316,7 +337,8 @@ mod tests {
                 vec![Instruction::ByteIncrement(1), Instruction::ByteDecrement(1)],
                 &args,
                 &mut vec![]
-            ),
+            )
+            .unwrap(),
             vec![0]
         );
     }
@@ -331,7 +353,7 @@ mod tests {
             PointerWrapMode::Crash,
         );
         assert_eq!(
-            interpreter(vec![Instruction::ByteDecrement(1); 256], &args, &mut vec![]),
+            interpreter(vec![Instruction::ByteDecrement(1); 256], &args, &mut vec![]).unwrap(),
             vec![0]
         );
     }
@@ -345,7 +367,7 @@ mod tests {
             PointerWrapMode::Crash,
         );
         assert_eq!(
-            interpreter(vec![Instruction::ByteDecrement(256)], &args, &mut vec![]),
+            interpreter(vec![Instruction::ByteDecrement(256)], &args, &mut vec![]).unwrap(),
             vec![0]
         );
     }
@@ -367,7 +389,8 @@ mod tests {
                 ],
                 &args,
                 &mut vec![]
-            ),
+            )
+            .unwrap(),
             vec![0, 1]
         );
     }
@@ -390,7 +413,8 @@ mod tests {
                 ],
                 &args,
                 &mut vec![]
-            ),
+            )
+            .unwrap(),
             vec![1, 0]
         );
     }
@@ -551,7 +575,7 @@ mod tests {
             None,
             PointerWrapMode::Crash,
         );
-        interpreter(instructions, &args, &mut result);
+        interpreter(instructions, &args, &mut result).unwrap();
         assert_eq!(result, vec![67])
     }
 
@@ -566,7 +590,7 @@ mod tests {
             None,
             PointerWrapMode::Crash,
         );
-        interpreter(instructions, &args, &mut result);
+        interpreter(instructions, &args, &mut result).unwrap();
         assert_eq!(result, vec![b'6', b'7', b'\n'])
     }
 
@@ -589,7 +613,7 @@ mod tests {
             None,
             PointerWrapMode::Crash,
         );
-        let result = interpreter(instructions, &args, &mut vec![]);
+        let result = interpreter(instructions, &args, &mut vec![]).unwrap();
         assert_eq!(result, vec![0, 42])
     }
 

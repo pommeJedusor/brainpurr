@@ -1,12 +1,17 @@
 use std::{fs, path::PathBuf};
 
-use crate::parser::{Instruction, fix_instructions};
+use crate::{
+    error::BrainpurrError,
+    parser::{Instruction, fix_instructions},
+};
 
 const INSTRUCTIONS: [char; 8] = ['>', '<', '+', '-', '.', ',', '[', ']'];
 
-pub fn parse_file(file_path: &PathBuf) -> Vec<Instruction> {
-    let content = fs::read_to_string(file_path).expect("failed to read file");
-    parse(&content)
+pub fn parse_file(file_path: &PathBuf) -> Result<Vec<Instruction>, BrainpurrError> {
+    match fs::read_to_string(file_path) {
+        Ok(content) => Ok(parse(&content)?),
+        Err(err) => Err(BrainpurrError::ParsingError(err.to_string())),
+    }
 }
 
 fn get_instructions(program: &str) -> Vec<Instruction> {
@@ -27,7 +32,7 @@ fn get_instructions(program: &str) -> Vec<Instruction> {
         .collect::<Vec<Instruction>>()
 }
 
-pub fn parse(program: &str) -> Vec<Instruction> {
+pub fn parse(program: &str) -> Result<Vec<Instruction>, BrainpurrError> {
     fix_instructions(get_instructions(program))
 }
 
@@ -54,7 +59,7 @@ mod tests {
     #[test]
     fn parsing() {
         assert_eq!(
-            parse(">+<-.,[]"),
+            parse(">+<-.,[]").unwrap(),
             vec![
                 Instruction::PointerIncrement(1),
                 Instruction::ByteIncrement(1),
@@ -88,17 +93,17 @@ mod tests {
     #[test]
     #[should_panic]
     fn too_many_open_loop() {
-        parse("[[]");
+        parse("[[]").unwrap();
     }
 
     #[test]
     #[should_panic]
     fn too_many_close_loop() {
-        parse("[]]");
+        parse("[]]").unwrap();
     }
 
     #[test]
     fn optimizations() {
-        assert_eq!(parse(">+>+>+-<-<-<"), vec![]);
+        assert_eq!(parse(">+>+>+-<-<-<").unwrap(), vec![]);
     }
 }

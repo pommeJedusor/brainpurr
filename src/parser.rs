@@ -1,5 +1,7 @@
 use std::{fs, path::PathBuf};
 
+use crate::error::BrainpurrError;
+
 const INSTRUCTIONS: [&str; 8] = ["meow", "mrow", "mrp", "purr", ":3c", ">:3", "nya", ":3"];
 
 #[derive(Debug, Clone, PartialEq, Hash)]
@@ -118,9 +120,11 @@ pub fn optimize_instructions(mut instructions: Vec<Instruction>) -> Vec<Instruct
     }
 }
 
-pub fn parse_file(file_path: &PathBuf) -> Vec<Instruction> {
-    let content = fs::read_to_string(file_path).expect("failed to read file");
-    parse(&content)
+pub fn parse_file(file_path: &PathBuf) -> Result<Vec<Instruction>, BrainpurrError> {
+    match fs::read_to_string(file_path) {
+        Ok(content) => Ok(parse(&content)?),
+        Err(err) => Err(BrainpurrError::ParsingError(err.to_string())),
+    }
 }
 
 fn get_instructions(program: &str) -> Vec<Instruction> {
@@ -143,7 +147,9 @@ fn get_instructions(program: &str) -> Vec<Instruction> {
         .collect::<Vec<Instruction>>()
 }
 
-pub fn fix_instructions(instructions: Vec<Instruction>) -> Vec<Instruction> {
+pub fn fix_instructions(
+    instructions: Vec<Instruction>,
+) -> Result<Vec<Instruction>, BrainpurrError> {
     let mut instructions = optimize_instructions(instructions);
 
     let mut open_brackets = vec![];
@@ -154,29 +160,31 @@ pub fn fix_instructions(instructions: Vec<Instruction>) -> Vec<Instruction> {
                 open_brackets.push(i);
             }
             Instruction::CloseLoop(_) => {
-                let open_bracket_index = open_brackets
-                    .pop()
-                    .expect("found a :3 without its required nya");
-                close_brackets.push((open_bracket_index, i));
+                let open_bracket_index = open_brackets.pop();
+                match open_bracket_index {
+                    Some(open_bracket_index) => close_brackets.push((open_bracket_index, i)),
+                    None => {
+                        return Err(BrainpurrError::TooManyColonThree);
+                    }
+                };
             }
             _ => {}
         };
     }
 
-    assert!(
-        open_brackets.is_empty(),
-        "found a nya without its required :3"
-    );
+    if !open_brackets.is_empty() {
+        return Err(BrainpurrError::TooManyNya);
+    }
 
     for (open_bracket_index, close_bracket_index) in close_brackets {
         instructions[open_bracket_index] = Instruction::OpenLoop(close_bracket_index);
         instructions[close_bracket_index] = Instruction::CloseLoop(open_bracket_index);
     }
 
-    instructions
+    Ok(instructions)
 }
 
-pub fn parse(program: &str) -> Vec<Instruction> {
+pub fn parse(program: &str) -> Result<Vec<Instruction>, BrainpurrError> {
     fix_instructions(get_instructions(program))
 }
 
@@ -204,7 +212,7 @@ mod tests {
     #[test]
     fn parsing() {
         assert_eq!(
-            parse("meow mrp mrow purr :3c >:3 nya :3"),
+            parse("meow mrp mrow purr :3c >:3 nya :3").unwrap(),
             vec![
                 Instruction::PointerIncrement(1),
                 Instruction::ByteIncrement(1),
@@ -238,19 +246,19 @@ mod tests {
     #[test]
     #[should_panic]
     fn too_many_open_loop() {
-        parse("nya nya :3");
+        parse("nya nya :3").unwrap();
     }
 
     #[test]
     #[should_panic]
     fn too_many_close_loop() {
-        parse("nya :3 :3");
+        parse("nya :3 :3").unwrap();
     }
 
     #[test]
     fn optimizations() {
         assert_eq!(
-            parse("meow mrp meow mrp meow mrp purr mrow purr mrow purr mrow"),
+            parse("meow mrp meow mrp meow mrp purr mrow purr mrow purr mrow").unwrap(),
             vec![]
         );
     }
