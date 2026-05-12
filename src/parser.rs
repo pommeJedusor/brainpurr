@@ -1,6 +1,6 @@
 use std::{fs, path::PathBuf};
 
-use crate::error::BrainpurrError;
+use crate::Error;
 
 const INSTRUCTIONS: [&str; 8] = ["meow", "mrow", "mrp", "purr", ":3c", ">:3", "nya", ":3"];
 
@@ -120,11 +120,8 @@ pub fn optimize_instructions(mut instructions: Vec<Instruction>) -> Vec<Instruct
     }
 }
 
-pub fn parse_file(file_path: &PathBuf) -> Result<Vec<Instruction>, BrainpurrError> {
-    match fs::read_to_string(file_path) {
-        Ok(content) => Ok(parse(&content)?),
-        Err(err) => Err(BrainpurrError::ParsingError(err.to_string())),
-    }
+pub fn parse_file(file_path: &PathBuf) -> Result<Vec<Instruction>, Error> {
+    parse(&fs::read_to_string(file_path)?)
 }
 
 fn get_instructions(program: &str) -> Vec<Instruction> {
@@ -147,9 +144,7 @@ fn get_instructions(program: &str) -> Vec<Instruction> {
         .collect::<Vec<Instruction>>()
 }
 
-pub fn fix_instructions(
-    instructions: Vec<Instruction>,
-) -> Result<Vec<Instruction>, BrainpurrError> {
+pub fn fix_instructions(instructions: Vec<Instruction>) -> Result<Vec<Instruction>, Error> {
     let mut instructions = optimize_instructions(instructions);
 
     let mut open_brackets = vec![];
@@ -164,7 +159,7 @@ pub fn fix_instructions(
                 match open_bracket_index {
                     Some(open_bracket_index) => close_brackets.push((open_bracket_index, i)),
                     None => {
-                        return Err(BrainpurrError::TooManyColonThree);
+                        return Err(Error::TooManyCloseLoop);
                     }
                 };
             }
@@ -173,7 +168,7 @@ pub fn fix_instructions(
     }
 
     if !open_brackets.is_empty() {
-        return Err(BrainpurrError::TooManyNya);
+        return Err(Error::TooManyOpenLoop);
     }
 
     for (open_bracket_index, close_bracket_index) in close_brackets {
@@ -184,7 +179,7 @@ pub fn fix_instructions(
     Ok(instructions)
 }
 
-pub fn parse(program: &str) -> Result<Vec<Instruction>, BrainpurrError> {
+pub fn parse(program: &str) -> Result<Vec<Instruction>, Error> {
     fix_instructions(get_instructions(program))
 }
 

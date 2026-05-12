@@ -1,17 +1,14 @@
 use std::{fs, path::PathBuf};
 
 use crate::{
-    error::BrainpurrError,
+    Error,
     parser::{Instruction, fix_instructions},
 };
 
 const INSTRUCTIONS: [char; 8] = ['>', '<', '+', '-', '.', ',', '[', ']'];
 
-pub fn parse_file(file_path: &PathBuf) -> Result<Vec<Instruction>, BrainpurrError> {
-    match fs::read_to_string(file_path) {
-        Ok(content) => Ok(parse(&content)?),
-        Err(err) => Err(BrainpurrError::ParsingError(err.to_string())),
-    }
+pub fn parse_file(file_path: &PathBuf) -> Result<Vec<Instruction>, Error> {
+    parse(&fs::read_to_string(file_path)?)
 }
 
 fn get_instructions(program: &str) -> Vec<Instruction> {
@@ -32,7 +29,7 @@ fn get_instructions(program: &str) -> Vec<Instruction> {
         .collect::<Vec<Instruction>>()
 }
 
-pub fn parse(program: &str) -> Result<Vec<Instruction>, BrainpurrError> {
+pub fn parse(program: &str) -> Result<Vec<Instruction>, Error> {
     fix_instructions(get_instructions(program))
 }
 

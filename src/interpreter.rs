@@ -1,11 +1,8 @@
-use std::{
-    io::{self, Write},
-    process,
-};
+use std::io::{self, Write};
 
 use crate::{
+    Error,
     args::{InputMethod, InterpreterArgs, OutputMethod, PointerWrapMode},
-    error::BrainpurrError,
     parser::Instruction,
 };
 
@@ -40,7 +37,11 @@ impl HeapState {
     }
 }
 
-fn increment_instruction<T: InterpreterArgs>(heap_state: &mut HeapState, args: &T, x: usize) {
+fn increment_instruction<T: InterpreterArgs>(
+    heap_state: &mut HeapState,
+    args: &T,
+    x: usize,
+) -> Result<(), Error> {
     if args.get_max_array_size().is_none() {
         heap_state.array_pointer += x;
         while heap_state.array.len() <= heap_state.array_pointer {
@@ -50,8 +51,7 @@ fn increment_instruction<T: InterpreterArgs>(heap_state: &mut HeapState, args: &
         heap_state.array_pointer = match args.get_pointer_wrap_mode() {
             PointerWrapMode::Crash => {
                 if heap_state.array_pointer + x >= heap_state.array.len() {
-                    eprintln!("pointer overflow");
-                    process::exit(1);
+                    return Err(Error::PointerOverflow);
                 }
                 heap_state.array_pointer + x
             }
@@ -60,16 +60,21 @@ fn increment_instruction<T: InterpreterArgs>(heap_state: &mut HeapState, args: &
             PointerWrapMode::Stick => heap_state.array.len() - 1,
         }
     }
+
+    Ok(())
 }
 
-fn decrement_instruction<T: InterpreterArgs>(heap_state: &mut HeapState, args: &T, x: usize) {
+fn decrement_instruction<T: InterpreterArgs>(
+    heap_state: &mut HeapState,
+    args: &T,
+    x: usize,
+) -> Result<(), Error> {
     if heap_state.array_pointer >= x {
         heap_state.array_pointer -= x
     } else {
         heap_state.array_pointer = match args.get_pointer_wrap_mode() {
             PointerWrapMode::Crash => {
-                eprintln!("pointer overflow");
-                process::exit(1);
+                return Err(Error::PointerUnderflow);
             }
             PointerWrapMode::Unsafe => heap_state.array_pointer - x,
             PointerWrapMode::WrapAround => {
@@ -79,6 +84,8 @@ fn decrement_instruction<T: InterpreterArgs>(heap_state: &mut HeapState, args: &
             PointerWrapMode::Stick => 0,
         }
     }
+
+    Ok(())
 }
 
 fn byte_increment_instruction(heap_state: &mut HeapState, x: usize) {
@@ -94,14 +101,12 @@ fn byte_decrement_instruction(heap_state: &mut HeapState, x: usize) {
 fn byte_input_instruction<T: InterpreterArgs>(
     heap_state: &mut HeapState,
     args: &T,
-) -> Result<(), BrainpurrError> {
+) -> Result<(), Error> {
     match args.get_input_method() {
         InputMethod::Normal => {
             while heap_state.input_queue.is_empty() {
                 let mut input = String::new();
-                if let Err(err) = io::stdin().read_line(&mut input) {
-                    return Err(BrainpurrError::UserInput(err.to_string()));
-                }
+                io::stdin().read_line(&mut input)?;
                 heap_state.input_queue = input
                     .into_bytes()
                     .iter()
@@ -110,39 +115,27 @@ fn byte_input_instruction<T: InterpreterArgs>(
                     .collect();
             }
 
-            let input_byte = heap_state.input_queue.pop();
-            assert!(input_byte.is_some());
-            if let Some(input_byte) = input_byte {
-                heap_state.array[heap_state.array_pointer] = input_byte;
-            }
+            let input_byte = heap_state.input_queue.pop().unwrap();
+            heap_state.array[heap_state.array_pointer] = input_byte;
         }
         InputMethod::FirstCharOnly => {
             let mut input = String::new();
-            if let Err(err) = io::stdin().read_line(&mut input) {
-                return Err(BrainpurrError::UserInput(err.to_string()));
+            while input.is_empty() {
+                io::stdin().read_line(&mut input)?;
             }
             let input = input
                 .chars()
                 .map(|x| newline_zero_func(x as u8, args.get_newline_zero()))
-                .next();
-            assert!(input.is_some());
-
-            if let Some(input) = input {
-                heap_state.array[heap_state.array_pointer] = input;
-            }
+                .next()
+                .unwrap();
+            heap_state.array[heap_state.array_pointer] = input;
         }
         InputMethod::ByteAsNumber => {
             let mut input = String::new();
-            if let Err(err) = io::stdin().read_line(&mut input) {
-                return Err(BrainpurrError::UserInput(err.to_string()));
-            }
-            match input[0..input.len() - 1].parse() {
-                Ok(input) => {
-                    let input = newline_zero_func(input, args.get_newline_zero());
-                    heap_state.array[heap_state.array_pointer] = input;
-                }
-                Err(err) => return Err(BrainpurrError::UserInput(err.to_string())),
-            }
+            io::stdin().read_line(&mut input)?;
+            let input = input[0..input.len() - 1].parse()?;
+            let input = newline_zero_func(input, args.get_newline_zero());
+            heap_state.array[heap_state.array_pointer] = input;
         }
     };
     Ok(())
@@ -152,34 +145,22 @@ fn byte_output_instruction<T: InterpreterArgs>(
     heap_state: &mut HeapState,
     args: &T,
     mut writer: impl std::io::Write,
-) -> Result<(), BrainpurrError> {
+) -> Result<(), Error> {
     match args.get_output_method() {
         OutputMethod::Normal => {
-            if let Err(err) = write!(
-                writer,
-                "{}",
-                newline_zero_func(
-                    heap_state.array[heap_state.array_pointer],
-                    args.get_newline_zero()
-                ) as char
-            ) {
-                return Err(BrainpurrError::Output(err.to_string()));
-            }
-            if let Err(err) = io::stdout().flush() {
-                return Err(BrainpurrError::Output(err.to_string()));
-            }
+            let char_byte = newline_zero_func(
+                heap_state.array[heap_state.array_pointer],
+                args.get_newline_zero(),
+            ) as char;
+            write!(writer, "{}", char_byte)?;
+            io::stdout().flush()?;
         }
         OutputMethod::ByteAsNumber => {
-            if let Err(err) = writeln!(
-                writer,
-                "{}",
-                newline_zero_func(
-                    heap_state.array[heap_state.array_pointer],
-                    args.get_newline_zero()
-                )
-            ) {
-                return Err(BrainpurrError::Output(err.to_string()));
-            }
+            let char_byte = newline_zero_func(
+                heap_state.array[heap_state.array_pointer],
+                args.get_newline_zero(),
+            );
+            writeln!(writer, "{}", char_byte)?;
         }
     }
 
@@ -202,7 +183,7 @@ pub fn interpreter<T: InterpreterArgs>(
     instructions: Vec<Instruction>,
     args: &T,
     mut writer: impl std::io::Write,
-) -> Result<Vec<u8>, BrainpurrError> {
+) -> Result<Vec<u8>, Error> {
     let max_array_size = args.get_max_array_size();
 
     let mut heap_state =
@@ -210,8 +191,8 @@ pub fn interpreter<T: InterpreterArgs>(
 
     while heap_state.instruction_pointer < instructions.len() {
         match instructions[heap_state.instruction_pointer] {
-            Instruction::PointerIncrement(x) => increment_instruction(&mut heap_state, args, x),
-            Instruction::PointerDecrement(x) => decrement_instruction(&mut heap_state, args, x),
+            Instruction::PointerIncrement(x) => increment_instruction(&mut heap_state, args, x)?,
+            Instruction::PointerDecrement(x) => decrement_instruction(&mut heap_state, args, x)?,
             Instruction::ByteIncrement(x) => byte_increment_instruction(&mut heap_state, x),
             Instruction::ByteDecrement(x) => byte_decrement_instruction(&mut heap_state, x),
             Instruction::ByteInput => byte_input_instruction(&mut heap_state, args)?,

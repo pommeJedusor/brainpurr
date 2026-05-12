@@ -7,8 +7,8 @@ use std::{
 };
 
 use crate::{
+    Error,
     args::{CompilerArgs, InputMethod, OutputMethod, PointerWrapMode},
-    error::BrainpurrError,
     parser::Instruction,
 };
 
@@ -137,7 +137,7 @@ pub fn compile_to_c<T: CompilerArgs>(instructions: &[Instruction], args: &T) -> 
 pub fn compile_to_file<T: CompilerArgs>(
     instructions: &Vec<Instruction>,
     args: &T,
-) -> Result<(), BrainpurrError> {
+) -> Result<(), Error> {
     let max_array_size = args.get_max_array_size();
     let input_method = args.get_input_method();
     let output_method = args.get_output_method();
@@ -162,27 +162,14 @@ pub fn compile_to_file<T: CompilerArgs>(
 
     gcc_args.insert(0, &c_file_name);
 
-    let mut file = match File::create(&c_file_name) {
-        Ok(file) => file,
-        Err(err) => Err(BrainpurrError::CompilingError(format!(
-            "failed to create temporary file for compiling: {err}"
-        )))?,
-    };
+    let mut file = File::create(&c_file_name)?;
 
-    if let Err(err) = write!(file, "{}", c_code) {
-        return Err(BrainpurrError::CompilingError(err.to_string()));
-    }
-    let result = match Command::new("gcc").args(&gcc_args).status() {
-        Ok(result) => result,
-        Err(err) => Err(BrainpurrError::CompilingError(err.to_string()))?,
-    };
+    write!(file, "{}", c_code)?;
+    let result = Command::new("gcc").args(&gcc_args).status()?;
     assert!(result.success());
 
-    if let Err(err) = fs::remove_file(&c_file_name) {
-        return Err(BrainpurrError::CompilingError(format!(
-            "failed to delete temporary file for compiling: {err}"
-        )));
-    }
+    fs::remove_file(&c_file_name)?;
+
     Ok(())
 }
 

@@ -1,8 +1,3 @@
-#![cfg_attr(not(test), deny(clippy::unwrap_used))]
-#![cfg_attr(not(test), deny(clippy::expect_used))]
-#![cfg_attr(not(test), deny(clippy::panic))]
-#![cfg_attr(not(test), deny(unused_must_use))]
-
 mod args;
 mod bf_parser;
 mod compiler;
@@ -10,10 +5,10 @@ mod error;
 mod interpreter;
 mod parser;
 
-use crate::{args::Args, interpreter::interpreter};
+use crate::{args::Args, error::Error, interpreter::interpreter};
 use clap::Parser;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Error> {
     let args = Args::parse();
 
     let path = &args.path;

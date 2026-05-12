@@ -1,34 +1,42 @@
-use std::{error::Error, fmt};
+use std::{error, fmt, io, num};
 
 #[derive(Debug)]
-pub enum BrainpurrError {
-    TooManyNya,
-    TooManyColonThree,
-    ParsingError(String),
-    CompilingError(String),
-    UserInput(String),
-    Output(String),
+pub enum Error {
+    TooManyOpenLoop,
+    TooManyCloseLoop,
+    PointerOverflow,
+    PointerUnderflow,
+    IO(io::Error),
+    UserInputParsing(num::ParseIntError),
 }
 
-impl Error for BrainpurrError {}
+impl error::Error for Error {}
 
-impl fmt::Display for BrainpurrError {
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::TooManyNya => write!(f, "found a nya without its required :3"),
-            Self::TooManyColonThree => write!(f, "found a :3 without its required nya"),
-            Self::ParsingError(error_message) => {
-                write!(f, "failed to parse the file: {error_message}")
+            Self::TooManyOpenLoop => write!(f, "found more 'loop opening' than 'loop closing'"),
+            Self::TooManyCloseLoop => write!(f, "found more 'loop closing' than 'loop opening'"),
+            Self::PointerUnderflow => write!(f, "Pointer Overflow"),
+            Self::PointerOverflow => write!(f, "Pointer Underflow"),
+            Self::IO(error) => {
+                write!(f, "failed to output: {}", error)
             }
-            Self::CompilingError(error_message) => {
-                write!(f, "failed to compile the file: {error_message}")
-            }
-            Self::UserInput(error_message) => {
-                write!(f, "failed to read user input: {error_message}")
-            }
-            Self::Output(error_message) => {
-                write!(f, "failed to output: {error_message}")
+            Self::UserInputParsing(error) => {
+                write!(f, "failed to parse input: {}", error)
             }
         }
+    }
+}
+
+impl From<io::Error> for Error {
+    fn from(error: io::Error) -> Self {
+        Error::IO(error)
+    }
+}
+
+impl From<num::ParseIntError> for Error {
+    fn from(error: num::ParseIntError) -> Self {
+        Error::UserInputParsing(error)
     }
 }
