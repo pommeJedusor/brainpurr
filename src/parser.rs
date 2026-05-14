@@ -95,9 +95,9 @@ fn optimize_instructions_byte(mut instructions: Vec<Instruction>) -> Vec<Instruc
 }
 
 pub fn optimize_instructions(mut instructions: Vec<Instruction>) -> Vec<Instruction> {
-    // optimize multiple time if possible
-    let mut pre_optimization_length = instructions.len();
-    loop {
+    let mut previous_instructions_length = None;
+    while previous_instructions_length.is_none_or(|x| x != instructions.len()) {
+        previous_instructions_length = Some(instructions.len());
         instructions = optimize_instructions_byte(optimize_instructions_pointer(instructions))
             .iter()
             .filter(|x| {
@@ -111,13 +111,9 @@ pub fn optimize_instructions(mut instructions: Vec<Instruction>) -> Vec<Instruct
             })
             .map(|x| x.to_owned())
             .collect();
-
-        if instructions.len() == pre_optimization_length {
-            return instructions;
-        } else {
-            pre_optimization_length = instructions.len();
-        }
     }
+
+    instructions
 }
 
 pub fn parse_file(file_path: &PathBuf) -> Result<Vec<Instruction>, Error> {
