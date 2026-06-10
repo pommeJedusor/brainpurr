@@ -2,8 +2,6 @@ use std::{fs, path::PathBuf};
 
 use crate::Error;
 
-const INSTRUCTIONS: [&str; 8] = ["meow", "mrow", "mrp", "purr", ":3c", ">:3", "nya", ":3"];
-
 #[derive(Debug, Clone, PartialEq, Hash)]
 pub enum Instruction {
     PointerIncrement(usize),
@@ -121,23 +119,32 @@ pub fn parse_file(file_path: &PathBuf) -> Result<Vec<Instruction>, Error> {
 }
 
 fn get_instructions(program: &str) -> Vec<Instruction> {
-    let instructions_words = program
-        .split_whitespace()
-        .filter(|x| INSTRUCTIONS.contains(x));
+    let mut i = 0;
+    let mut instructions = vec![];
 
-    instructions_words
-        .map(|instruction_word| match instruction_word {
-            "meow" => Instruction::PointerIncrement(1),
-            "mrow" => Instruction::PointerDecrement(1),
-            "mrp" => Instruction::ByteIncrement(1),
-            "purr" => Instruction::ByteDecrement(1),
-            ":3c" => Instruction::ByteOutput,
-            ">:3" => Instruction::ByteInput,
-            "nya" => Instruction::OpenLoop(0),
-            ":3" => Instruction::CloseLoop(0),
-            _ => unreachable!(),
-        })
-        .collect::<Vec<Instruction>>()
+    macro_rules! check_instruction {
+        ($a:expr, $b:expr) => {{
+            if matches!(program.get(i..i + $a.len()), Some($a)) {
+                instructions.push($b);
+                i += $a.len();
+                continue;
+            }
+        }};
+    }
+
+    while i < program.len() {
+        check_instruction!("meow", Instruction::PointerIncrement(1));
+        check_instruction!("mrow", Instruction::PointerDecrement(1));
+        check_instruction!("mrp", Instruction::ByteIncrement(1));
+        check_instruction!("purr", Instruction::ByteDecrement(1));
+        check_instruction!(":3c", Instruction::ByteOutput);
+        check_instruction!(">:3", Instruction::ByteInput);
+        check_instruction!("nya", Instruction::OpenLoop(0));
+        check_instruction!(":3", Instruction::CloseLoop(0));
+        i += 1;
+    }
+
+    instructions
 }
 
 pub fn fix_instructions(instructions: Vec<Instruction>) -> Result<Vec<Instruction>, Error> {
@@ -204,6 +211,23 @@ mod tests {
     fn parsing() {
         assert_eq!(
             parse("meow mrp mrow purr :3c >:3 nya :3").unwrap(),
+            vec![
+                Instruction::PointerIncrement(1),
+                Instruction::ByteIncrement(1),
+                Instruction::PointerDecrement(1),
+                Instruction::ByteDecrement(1),
+                Instruction::ByteOutput,
+                Instruction::ByteInput,
+                Instruction::OpenLoop(7),
+                Instruction::CloseLoop(6)
+            ]
+        );
+    }
+
+    #[test]
+    fn parsing_without_spaces() {
+        assert_eq!(
+            parse("meowmrpmrowpurr:3c>:3nya:3").unwrap(),
             vec![
                 Instruction::PointerIncrement(1),
                 Instruction::ByteIncrement(1),
